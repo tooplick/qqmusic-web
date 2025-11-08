@@ -20,16 +20,16 @@
 qqmusic_web/
 ├── app.py                 # Flask主应用
 ├── requirements.txt       # Python依赖项
-├── qqmusic_cred.pkl      # QQ音乐凭证文件
-├── music/                # 音乐文件存储目录
+├── qqmusic_cred.pkl       # QQ音乐凭证文件
+├── music/                 # 音乐文件存储目录
 ├── static/
 │   ├── css/
-│   │   └── style.css     # 样式文件
+│   │   └── style.css      # 样式文件
 │   ├── js/
-│   │   └── script.js     # 前端交互
-│   └── images/           # 图片资源
+│   │   └── script.js      # 前端交互
+│   └── images/            # 图片资源
 └── templates/
-    └── index.html        # 主页
+    └── index.html         # 主页
 ```
 
 ## 安装部署
