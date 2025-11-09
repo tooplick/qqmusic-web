@@ -31,19 +31,28 @@ fi
 # 创建项目目录
 PROJECT_DIR="/opt/qqmusic-web"
 echo "创建项目目录: $PROJECT_DIR"
-mkdir -p $PROJECT_DIR
-cd $PROJECT_DIR
 
 # 下载项目文件
 echo "下载项目文件..."
-if command -v git &> /dev/null && [ -d ".git" ]; then
-    echo "项目已存在，更新到最新版本..."
-    git pull origin main
-elif command -v git &> /dev/null; then
-    echo "使用 git 克隆项目..."
-    git clone https://github.com/tooplick/qqmusic_web.git .
+if command -v git &> /dev/null; then
+    echo "使用 git 下载项目..."
+    if [ -d "$PROJECT_DIR/.git" ]; then
+        echo "项目已存在，更新到最新版本..."
+        cd $PROJECT_DIR
+        git pull origin main
+    else
+        rm -rf $PROJECT_DIR
+        mkdir -p $PROJECT_DIR
+        cd $PROJECT_DIR
+        git clone https://github.com/tooplick/qqmusic_web.git .
+    fi
 else
-    echo "git 未安装，使用 wget 下载..."
+    echo "git 未安装，使用 wget 下载项目..."
+    # 删除旧目录并重新创建
+    rm -rf $PROJECT_DIR
+    mkdir -p $PROJECT_DIR
+    cd $PROJECT_DIR
+    
     # 使用 wget 下载 GitHub 仓库的 ZIP 文件
     wget -O qqmusic_web.zip https://github.com/tooplick/qqmusic_web/archive/refs/heads/main.zip
     
@@ -94,7 +103,7 @@ echo "使用项目自带的 Docker 配置..."
 cd docker
 
 # 停止并删除现有容器
-echo "停止并删除现有容器(如果有)..."
+echo "停止并删除现有容器..."
 docker-compose down 2>/dev/null || true
 
 # 获取镜像名称并删除旧镜像
