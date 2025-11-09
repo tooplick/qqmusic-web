@@ -13,28 +13,31 @@
 - **自动刷新**: 支持凭证自动刷新功能
 - **状态监控**: 实时监控凭证状态
 
-
 ## 项目结构
 
 ```
 qqmusic_web/
-├── app.py                 # Flask主应用
-├── requirements.txt       # Python依赖项
+├── app.py                 # Flask Web服务器
+├── requirements.txt       # Python 依赖列表
 ├── qqmusic_cred.pkl       # QQ音乐凭证文件
 ├── music/                 # 音乐文件存储目录
-├── static/
-│   ├── css/
-│   │   └── style.css      # 样式文件
+├── static/             
+│   ├── css/s
+│   │    └── style.css     # 样式文件
 │   ├── js/
-│   │   └── script.js      # 前端交互
-│   └── images/            # 图片资源
-└── templates/
-    └── index.html         # 主页
+│   │    └── script.js     # 前端交互脚本
+│   └── images/ 
+├── templates/         
+│   └── index.html         # 主页
+└── docker/             
+    ├── dockerfile         # Docker 镜像构建文件
+    ├── docker-compose.yml # 容器编排配置
+    └── install.sh         # 安装脚本
 ```
 
 ## 安装部署
 
-### Docker一键部署(推荐)
+### Docker 一键部署(推荐)
 ```
 #!/bin/bash
 sudo -E bash -c "$(curl -fsSL https://raw.githubusercontent.com/tooplick/qqmusic_web/refs/heads/main/docker/install.sh)"
