@@ -74,15 +74,33 @@ sleep 5
 if docker-compose ps | grep -q "Up"; then
     echo "QQMusic Web 安装成功！"
     echo ""
-    echo "访问地址: http://localhost:6022"
+    
+    # 获取本地IP地址
+    LOCAL_IP=$(hostname -I | awk '{print $1}')
+    echo "本地访问地址: http://localhost:6022"
+    echo "局域网访问地址: http://${LOCAL_IP}:6022"
+    
+    # 尝试获取公网IP地址
+    echo "正在获取公网地址..."
+    PUBLIC_IP=$(curl -s --max-time 5 ifconfig.me || curl -s --max-time 5 ipinfo.io/ip || curl -s --max-time 5 api.ipify.org)
+    
+    if [ -n "$PUBLIC_IP" ] && [ "$PUBLIC_IP" != "" ]; then
+        echo "公网访问地址: http://${PUBLIC_IP}:6022"
+        echo "注意: 请确保防火墙已开放 6022 端口"
+    else
+        echo "无法自动获取公网IP，请手动检查网络配置"
+        echo "您可以通过以下命令查看公网IP: curl ifconfig.me"
+    fi
+    
+    echo ""
     echo "项目目录: $PROJECT_DIR"
     echo ""
     
     echo "管理命令:"
-    echo "   查看日志:cd $PROJECT_DIR/docker && sudo docker-compose logs -f"
-    echo "   停止服务:cd $PROJECT_DIR/docker && sudo docker-compose down"
-    echo "   重启服务:cd $PROJECT_DIR/docker && sudo docker-compose restart"
-    echo "   更新服务:cd $PROJECT_DIR/docker && sudo docker-compose up -d --build"
+    echo "   查看日志: cd $PROJECT_DIR/docker && sudo docker-compose logs -f"
+    echo "   停止服务: cd $PROJECT_DIR/docker && sudo docker-compose down"
+    echo "   重启服务: cd $PROJECT_DIR/docker && sudo docker-compose restart"
+    echo "   更新服务: cd $PROJECT_DIR/docker && sudo docker-compose up -d --build"
 else
     echo "服务启动失败，请检查日志:"
     cd $PROJECT_DIR/docker && docker-compose logs
