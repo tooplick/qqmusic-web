@@ -514,7 +514,7 @@ def api_download():
                 # 获取封面URL
                 cover_url = None
                 if album_mid:
-                    cover_url = get_cover(album_mid, {cover_size})  # 使用500px大小的封面
+                    cover_url = get_cover(album_mid, cover_size)  # 使用500px大小的封面
 
                 # 获取歌词
                 lyrics_data = None
