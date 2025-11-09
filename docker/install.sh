@@ -81,7 +81,6 @@ if docker-compose ps | grep -q "Up"; then
     echo "局域网访问地址: http://${LOCAL_IP}:6022"
     
     # 尝试获取公网IP地址
-    echo "正在获取公网地址..."
     PUBLIC_IP=$(curl -s --max-time 5 ifconfig.me || curl -s --max-time 5 ipinfo.io/ip || curl -s --max-time 5 api.ipify.org)
     
     if [ -n "$PUBLIC_IP" ] && [ "$PUBLIC_IP" != "" ]; then
