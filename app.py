@@ -16,6 +16,8 @@ from datetime import datetime, timedelta
 import logging
 from typing import Optional, Dict, Any, Literal
 from mutagen.flac import FLAC, Picture
+from mutagen.id3 import ID3, TIT2, TPE1, TALB, APIC, USLT, TPE2, TCOM, TDRC, TCON
+from mutagen.mp3 import MP3
 
 # 配置日志
 logging.basicConfig(
@@ -33,11 +35,10 @@ MUSIC_DIR.mkdir(exist_ok=True)
 CLEANUP_INTERVAL = 10  # 清理间隔(秒)
 CREDENTIAL_CHECK_INTERVAL = 10  # 凭证检查间隔(秒)
 MAX_FILENAME_LENGTH = 100  #
-cover_size = 800 #封面尺寸
+cover_size = 800  # 封面尺寸[150, 300, 500, 800]
 
 
 def get_cover(mid: str, size: Literal[150, 300, 500, 800] = 300) -> str:
-
     if size not in [150, 300, 500, 800]:
         raise ValueError("not supported size")
     return f"https://y.gtimg.cn/music/photo_new/T002R{size}x{size}M000{mid}.jpg"
@@ -89,6 +90,91 @@ async def add_metadata_to_flac(file_path: Path, song_info: dict, cover_url: str 
 
     except Exception as e:
         logger.error(f"添加元数据失败: {e}")
+        return False
+
+
+async def add_metadata_to_mp3(file_path: Path, song_info: dict, cover_url: str = None, lyrics_data: dict = None):
+    """为MP3文件添加封面和歌词"""
+    try:
+        # 尝试读取现有ID3标签，如果没有则创建新的
+        try:
+            audio = ID3(file_path)
+        except:
+            audio = ID3()
+
+        # 添加基本元数据
+        audio.add(TIT2(encoding=3, text=song_info.get('name', '')))  # 标题
+        audio.add(TPE1(encoding=3, text=song_info.get('singers', '')))  # 艺术家
+        audio.add(TALB(encoding=3, text=song_info.get('album', '')))  # 专辑
+
+        # 添加封面
+        if cover_url:
+            cover_data = await download_file_content(cover_url)
+            if cover_data and len(cover_data) > 1024:  # 确保不是空图片
+                # 根据URL判断MIME类型
+                if cover_url.lower().endswith('.png'):
+                    mime_type = 'image/png'
+                else:
+                    mime_type = 'image/jpeg'
+
+                # 删除现有的封面
+                audio.delall('APIC')
+
+                # 添加新封面
+                audio.add(APIC(
+                    encoding=3,  # UTF-8
+                    mime=mime_type,
+                    type=3,  # 封面图片
+                    desc='Cover',
+                    data=cover_data
+                ))
+                logger.info(f"已添加封面到 {file_path.name}")
+
+        # 添加歌词
+        if lyrics_data:
+            lyric_text = lyrics_data.get('lyric', '')
+            if lyric_text:
+                # 删除现有的歌词
+                audio.delall('USLT')
+
+                # 添加歌词
+                audio.add(USLT(
+                    encoding=3,  # UTF-8
+                    lang='eng',
+                    desc='Lyrics',
+                    text=lyric_text
+                ))
+                logger.info(f"已添加歌词到 {file_path.name}")
+
+            # 添加翻译歌词（如果有）
+            trans_text = lyrics_data.get('trans', '')
+            if trans_text:
+                audio.add(USLT(
+                    encoding=3,  # UTF-8
+                    lang='eng',
+                    desc='Translation',
+                    text=trans_text
+                ))
+
+        audio.save(file_path, v2_version=3)  # 使用ID3v2.3格式保存，兼容性更好
+        logger.info(f"已为 {file_path.name} 添加元数据")
+        return True
+
+    except Exception as e:
+        logger.error(f"为MP3添加元数据失败: {e}")
+        return False
+
+
+async def add_metadata_to_file(file_path: Path, song_info: dict, cover_url: str = None, lyrics_data: dict = None):
+    """根据文件类型为音频文件添加元数据"""
+    file_extension = file_path.suffix.lower()
+
+    if file_extension == '.flac':
+        return await add_metadata_to_flac(file_path, song_info, cover_url, lyrics_data)
+    elif file_extension in ['.mp3', '.mpga']:
+        return await add_metadata_to_mp3(file_path, song_info, cover_url, lyrics_data)
+    else:
+        logger.warning(f"不支持为 {file_extension} 格式添加元数据")
         return False
 
 
@@ -507,14 +593,15 @@ def api_download():
             else:
                 logger.warning(f"{quality_name} 下载失败")
 
-        # 为FLAC文件添加元数据
+        # 为文件添加元数据（FLAC和MP3都支持）
         if (download_info and not download_info.get('cached', False) and
-                add_metadata and downloaded_file_type == SongFileType.FLAC):
+                add_metadata and downloaded_file_type in [SongFileType.FLAC, SongFileType.MP3_320,
+                                                          SongFileType.MP3_128]):
             try:
                 # 获取封面URL
                 cover_url = None
                 if album_mid:
-                    cover_url = get_cover(album_mid, cover_size)  # 使用500px大小的封面
+                    cover_url = get_cover(album_mid, cover_size)  # 使用指定尺寸的封面
 
                 # 获取歌词
                 lyrics_data = None
@@ -523,9 +610,9 @@ def api_download():
                 except Exception as e:
                     logger.warning(f"获取歌词失败: {e}")
 
-                # 添加元数据到FLAC文件
+                # 添加元数据到文件
                 if cover_url or lyrics_data:
-                    metadata_success = run_async(add_metadata_to_flac(
+                    metadata_success = run_async(add_metadata_to_file(
                         Path(download_info['filepath']),
                         song_info,
                         cover_url,
