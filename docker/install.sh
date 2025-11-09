@@ -36,11 +36,40 @@ cd $PROJECT_DIR
 
 # 下载项目文件
 echo "下载项目文件..."
-if [ -d ".git" ]; then
+if command -v git &> /dev/null && [ -d ".git" ]; then
     echo "项目已存在，更新到最新版本..."
     git pull origin main
-else
+elif command -v git &> /dev/null; then
+    echo "使用 git 克隆项目..."
     git clone https://github.com/tooplick/qqmusic_web.git .
+else
+    echo "git 未安装，使用 wget 下载..."
+    # 使用 wget 下载 GitHub 仓库的 ZIP 文件
+    wget -O qqmusic_web.zip https://github.com/tooplick/qqmusic_web/archive/refs/heads/main.zip
+    
+    # 检查是否安装了 unzip
+    if ! command -v unzip &> /dev/null; then
+        echo "安装 unzip..."
+        if command -v apt &> /dev/null; then
+            apt update && apt install -y unzip
+        elif command -v yum &> /dev/null; then
+            yum install -y unzip
+        else
+            echo "错误: 无法安装 unzip，请手动安装后重新运行脚本"
+            exit 1
+        fi
+    fi
+    
+    # 解压文件
+    echo "解压项目文件..."
+    unzip -q qqmusic_web.zip
+    
+    # 移动文件到当前目录
+    mv qqmusic_web-main/* .
+    mv qqmusic_web-main/.* . 2>/dev/null || true
+    
+    # 清理临时文件
+    rm -rf qqmusic_web-main qqmusic_web.zip
 fi
 
 echo "项目文件下载完成"
@@ -65,7 +94,7 @@ echo "使用项目自带的 Docker 配置..."
 cd docker
 
 # 停止并删除现有容器
-echo "停止并删除现有容器..."
+echo "停止并删除现有容器(如果有)..."
 docker-compose down 2>/dev/null || true
 
 # 获取镜像名称并删除旧镜像
