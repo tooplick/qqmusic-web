@@ -1,4 +1,4 @@
-FROM docker.xuanyuan.run/library/python:3.11.14-trixie
+FROM bsc5qtk2qwh002.xuanyuan.run/library/python:3.11.14-trixie
 
 WORKDIR /app
 
