@@ -26,7 +26,7 @@ if command -v git &> /dev/null; then
         echo "项目已存在，更新到最新版本..."
         git pull origin main
     else
-        git clone https://gitee.com/tooplick/qqmusic_web.git .
+        git clone https://github.com/tooplick/qqmusic_web.git .
     fi
     echo "项目文件下载完成"
 else
@@ -53,7 +53,7 @@ else
     
     # 下载项目zip文件
     echo "下载项目zip文件..."
-    wget -O qqmusic_web.zip https://gitee.com/tooplick/qqmusic_web/repository/archive/main.zip
+    wget -O qqmusic_web.zip https://github.com/tooplick/qqmusic_web/archive/main.zip
     
     # 检查unzip命令是否存在
     if ! command -v unzip &> /dev/null; then
@@ -193,7 +193,6 @@ if docker-compose ps | grep -q "Up"; then
     # 如果仍然无法获取IP，使用默认值
     if [ -z "$LOCAL_IP" ] || [ "$LOCAL_IP" = "" ]; then
         LOCAL_IP="127.0.0.1"
-        echo "警告: 无法获取局域网IP，使用本地回环地址"
     fi
     
     echo "本地访问地址: http://localhost:6022"
