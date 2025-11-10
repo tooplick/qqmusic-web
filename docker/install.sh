@@ -30,23 +30,13 @@ configure_mirror=${configure_mirror:-y}
 if [ "$configure_mirror" = "y" ] || [ "$configure_mirror" = "Y" ]; then
     echo "配置 Docker 国内镜像源..."
     
-    # 检查是否已存在配置文件，如果存在则备份
-    if [ -f /etc/docker/daemon.json ]; then
-        echo "检测到已存在 Docker 配置文件 /etc/docker/daemon.json"
-        # 备份原配置
-        backup_file="/etc/docker/daemon.json.backup.$(date +%Y%m%d%H%M%S)"
-        cp /etc/docker/daemon.json "$backup_file"
-        echo "原配置已备份至: $backup_file"
-        echo "删除原配置并创建新配置..."
-    fi
-    
     # 创建新配置
     mkdir -p /etc/docker
     tee /etc/docker/daemon.json > /dev/null <<EOF
 {
   "registry-mirrors": [
-    "https://docker.mirrors.ustc.edu.cn",
     "https://hub-mirror.c.163.com",
+    "https://docker.mirrors.ustc.edu.cn",
     "https://mirror.baidubce.com",
     "https://docker.nju.edu.cn"
   ],
@@ -61,8 +51,8 @@ EOF
     systemctl daemon-reload
     systemctl restart docker
     echo "Docker 镜像源配置完成，已启用以下镜像源："
-    echo "  - 中科大镜像源: https://docker.mirrors.ustc.edu.cn"
     echo "  - 网易镜像源: https://hub-mirror.c.163.com"
+    echo "  - 中科大镜像源: https://docker.mirrors.ustc.edu.cn"
     echo "  - 百度云镜像源: https://mirror.baidubce.com"
     echo "  - 南京大学镜像源: https://docker.nju.edu.cn"
 else
