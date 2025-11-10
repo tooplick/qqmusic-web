@@ -26,7 +26,7 @@ if command -v git &> /dev/null; then
         echo "项目已存在，更新到最新版本..."
         git pull origin main
     else
-        git clone https://github.com/tooplick/qqmusic_web.git .
+        git clone https://gitee.com/tooplick/qqmusic_web.git .
     fi
     echo "项目文件下载完成"
 else
@@ -53,7 +53,7 @@ else
     
     # 下载项目zip文件
     echo "下载项目zip文件..."
-    wget -O qqmusic_web.zip https://github.com/tooplick/qqmusic_web/archive/main.zip
+    wget -O qqmusic_web.zip https://gitee.com/tooplick/qqmusic_web/repository/archive/main.zip
     
     # 检查unzip命令是否存在
     if ! command -v unzip &> /dev/null; then
@@ -150,8 +150,8 @@ echo "使用docker-compose.yml配置..."
 # 进入 docker 目录
 cd docker
 
-# 删除现有容器
-echo "删除现有容器..."
+# 停止并删除现有容器
+echo "停止并删除现有容器..."
 docker-compose down 2>/dev/null || true
 
 # 获取镜像名称并删除旧镜像
@@ -175,13 +175,36 @@ if docker-compose ps | grep -q "Up"; then
     echo "QQMusic Web 安装成功！"
     echo ""
     
-    # 获取本地IP地址
-    LOCAL_IP=$(hostname -I | awk '{print $1}')
+    # 获取本地IP地址 - 使用多种方法确保能获取到IP
+    echo "获取网络地址信息..."
+    
+    # 方法1: 使用hostname命令
+    LOCAL_IP=$(hostname -I 2>/dev/null | awk '{print $1}')
+    
+    # 方法2: 如果方法1失败，使用ip命令
+    if [ -z "$LOCAL_IP" ] || [ "$LOCAL_IP" = "" ]; then
+        LOCAL_IP=$(ip route get 1 2>/dev/null | awk '{print $7}' | head -1)
+    fi
+    
+    # 方法3: 如果前两种方法都失败，尝试从网络接口获取
+    if [ -z "$LOCAL_IP" ] || [ "$LOCAL_IP" = "" ]; then
+        LOCAL_IP=$(ip addr show 2>/dev/null | grep -oP 'inet \K[\d.]+' | grep -v '127.0.0.1' | head -1)
+    fi
+    
+    # 如果仍然无法获取IP，使用默认值
+    if [ -z "$LOCAL_IP" ] || [ "$LOCAL_IP" = "" ]; then
+        LOCAL_IP="127.0.0.1"
+        echo "警告: 无法获取局域网IP，使用本地回环地址"
+    fi
+    
     echo "本地访问地址: http://localhost:6022"
-    echo "局域网访问地址: http://${LOCAL_IP}:6022"
+    if [ "$LOCAL_IP" != "127.0.0.1" ]; then
+        echo "局域网访问地址: http://${LOCAL_IP}:6022"
+    fi
     
     # 尝试获取公网IP地址
-    PUBLIC_IP=$(curl -s --max-time 5 ifconfig.me || curl -s --max-time 5 ipinfo.io/ip || curl -s --max-time 5 api.ipify.org)
+    echo "尝试获取公网IP地址..."
+    PUBLIC_IP=$(curl -s --max-time 5 ifconfig.me || curl -s --max-time 5 ipinfo.io/ip || curl -s --max-time 5 api.ipify.org || echo "")
     
     if [ -n "$PUBLIC_IP" ] && [ "$PUBLIC_IP" != "" ]; then
         echo "公网访问地址: http://${PUBLIC_IP}:6022"
@@ -200,6 +223,11 @@ if docker-compose ps | grep -q "Up"; then
     echo "   停止服务: cd $PROJECT_DIR/docker && sudo docker-compose down"
     echo "   重启服务: cd $PROJECT_DIR/docker && sudo docker-compose restart"
     echo "   更新服务: cd $PROJECT_DIR/docker && sudo docker-compose up -d --build --force-recreate"
+    
+    # 显示网络接口信息，帮助用户诊断
+    echo ""
+    echo "网络接口信息:"
+    ip addr show | grep -E '^[0-9]+:|inet ' | grep -v '127.0.0.1' | head -10
 else
     echo "服务启动失败，请检查日志:"
     cd $PROJECT_DIR/docker && docker-compose logs
