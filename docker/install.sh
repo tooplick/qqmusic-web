@@ -176,7 +176,6 @@ if docker-compose ps | grep -q "Up"; then
     echo ""
     
     # 获取本地IP地址 - 使用多种方法确保能获取到IP
-    echo "获取网络地址信息..."
     
     # 方法1: 使用hostname命令
     LOCAL_IP=$(hostname -I 2>/dev/null | awk '{print $1}')
@@ -203,7 +202,6 @@ if docker-compose ps | grep -q "Up"; then
     fi
     
     # 尝试获取公网IP地址
-    echo "尝试获取公网IP地址..."
     PUBLIC_IP=$(curl -s --max-time 5 ifconfig.me || curl -s --max-time 5 ipinfo.io/ip || curl -s --max-time 5 api.ipify.org || echo "")
     
     if [ -n "$PUBLIC_IP" ] && [ "$PUBLIC_IP" != "" ]; then
@@ -224,10 +222,7 @@ if docker-compose ps | grep -q "Up"; then
     echo "   重启服务: cd $PROJECT_DIR/docker && sudo docker-compose restart"
     echo "   更新服务: cd $PROJECT_DIR/docker && sudo docker-compose up -d --build --force-recreate"
     
-    # 显示网络接口信息，帮助用户诊断
     echo ""
-    echo "网络接口信息:"
-    ip addr show | grep -E '^[0-9]+:|inet ' | grep -v '127.0.0.1' | head -10
 else
     echo "服务启动失败，请检查日志:"
     cd $PROJECT_DIR/docker && docker-compose logs
