@@ -24,7 +24,7 @@ logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
-logger = logging.getLogger("QQMusicDownloader")
+logger = logging.getLogger("qqmusic_web")
 
 app = Flask(__name__)
 CREDENTIAL_FILE = Path("qqmusic_cred.pkl")
