@@ -18,6 +18,23 @@ if ! command -v docker &> /dev/null; then
     systemctl enable docker
     systemctl start docker
     echo "Docker 安装完成"
+    
+    # 询问是否添加 Docker 镜像源
+    echo ""
+    read -p "是否添加 Docker 国内镜像源(y/n): " add_mirror
+    if [[ $add_mirror =~ ^[Yy]$ ]]; then
+        mkdir -p /etc/docker
+        cat > /etc/docker/daemon.json << EOF
+{
+  "registry-mirrors": ["https://docker.xuanyuan.me/"]
+}
+EOF
+        echo "重启 Docker 服务..."
+        systemctl daemon-reload
+        systemctl restart docker
+        echo "Docker 镜像源配置完成"
+    fi
+    echo ""
 fi
 
 # 检查 Docker Compose 是否安装
