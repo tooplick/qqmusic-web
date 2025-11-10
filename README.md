@@ -42,7 +42,11 @@ qqmusic_web/
 #!/bin/bash
 sudo -E bash -c "$(curl -fsSL https://raw.githubusercontent.com/tooplick/qqmusic_web/refs/heads/main/docker/install.sh)"
 ```
-
+### 国内加速 ###
+```
+#!/bin/bash
+sudo -E bash -c "$(curl -fsSL https://raw.bgithub.xyz/tooplick/qqmusic_web/refs/heads/main/docker/install.sh)"
+```
 ### Python 3.11+
 
 1. **克隆项目**
