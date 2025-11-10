@@ -29,7 +29,7 @@ if ! command -v docker-compose &> /dev/null; then
 fi
 
 # 创建项目目录
-PROJECT_DIR="/opt/qqmusic_web"
+PROJECT_DIR="/opt/qqmusic-web"
 echo "创建项目目录: $PROJECT_DIR"
 mkdir -p $PROJECT_DIR
 cd $PROJECT_DIR
