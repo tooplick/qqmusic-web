@@ -29,7 +29,7 @@ if ! command -v docker-compose &> /dev/null; then
 fi
 
 # 创建项目目录
-PROJECT_DIR="/opt/qqmusic-web"
+PROJECT_DIR="/opt/qqmusic_web"
 echo "创建项目目录: $PROJECT_DIR"
 mkdir -p $PROJECT_DIR
 cd $PROJECT_DIR
@@ -56,7 +56,7 @@ if [ ! -f "docker/docker-compose.yml" ]; then
     exit 1
 fi
 
-echo "使用项目自带的 Docker 配置..."
+echo "使用docker-compose.yml配置..."
 
 # 进入 docker 目录
 cd docker
@@ -66,7 +66,7 @@ echo "停止并删除现有容器..."
 docker-compose down 2>/dev/null || true
 
 # 获取镜像名称并删除旧镜像
-echo "检查并删除旧镜像..."
+echo "删除旧镜像..."
 IMAGE_NAME=$(grep "image:" docker-compose.yml | awk '{print $2}' | head -1)
 if [ -n "$IMAGE_NAME" ] && docker image inspect "$IMAGE_NAME" &>/dev/null; then
     echo "删除旧镜像: $IMAGE_NAME"
