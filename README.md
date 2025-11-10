@@ -22,7 +22,7 @@ qqmusic_web/
 ├── qqmusic_cred.pkl             # 凭证文件
 ├── music/                       # 音乐文件存储目录
 ├── static/             
-│   ├── css/s
+│   ├── css/
 │   │    └── style.css           # 样式文件
 │   ├── js/
 │   │    └── script.js           # 前端交互脚本
