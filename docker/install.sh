@@ -13,28 +13,36 @@ fi
 
 # 检查 Docker 是否安装
 if ! command -v docker &> /dev/null; then
-    echo "安装 Docker..."
+    echo "Docker 未安装，开始安装 Docker..."
     curl -fsSL https://get.docker.com | sh
     systemctl enable docker
     systemctl start docker
     echo "Docker 安装完成"
+else
+    echo "Docker 已安装，版本: $(docker --version)"
 fi
 
-# 检查 Docker Compose 是否安装
-if ! command -v docker-compose &> /dev/null; then
-    echo "安装 Docker Compose..."
-    curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-    chmod +x /usr/local/bin/docker-compose
-    echo "Docker Compose 安装完成"
-fi
+# 询问用户是否配置 Docker 国内镜像源
+echo ""
+read -p "是否配置 Docker 国内镜像源(y/n，默认y): " configure_mirror
+configure_mirror=${configure_mirror:-y}
 
-    # 询问用户是否配置国内镜像源
-    read -p "是否配置 Docker 国内镜像源？(y/n，默认y): " configure_mirror
-    configure_mirror=${configure_mirror:-y}
-    if [ "$configure_mirror" = "y" ] || [ "$configure_mirror" = "Y" ]; then
-        echo "配置 Docker 国内镜像源..."
-        mkdir -p /etc/docker
-        tee /etc/docker/daemon.json > /dev/null <<EOF
+if [ "$configure_mirror" = "y" ] || [ "$configure_mirror" = "Y" ]; then
+    echo "配置 Docker 国内镜像源..."
+    
+    # 检查是否已存在配置文件，如果存在则备份
+    if [ -f /etc/docker/daemon.json ]; then
+        echo "检测到已存在 Docker 配置文件 /etc/docker/daemon.json"
+        # 备份原配置
+        backup_file="/etc/docker/daemon.json.backup.$(date +%Y%m%d%H%M%S)"
+        cp /etc/docker/daemon.json "$backup_file"
+        echo "原配置已备份至: $backup_file"
+        echo "删除原配置并创建新配置..."
+    fi
+    
+    # 创建新配置
+    mkdir -p /etc/docker
+    tee /etc/docker/daemon.json > /dev/null <<EOF
 {
   "registry-mirrors": [
     "https://docker.mirrors.ustc.edu.cn",
@@ -50,10 +58,31 @@ fi
   }
 }
 EOF
-        systemctl daemon-reload
-        systemctl restart docker
-        echo "Docker 镜像源配置完成"
+    systemctl daemon-reload
+    systemctl restart docker
+    echo "Docker 镜像源配置完成，已启用以下镜像源："
+    echo "  - 中科大镜像源: https://docker.mirrors.ustc.edu.cn"
+    echo "  - 网易镜像源: https://hub-mirror.c.163.com"
+    echo "  - 百度云镜像源: https://mirror.baidubce.com"
+    echo "  - 南京大学镜像源: https://docker.nju.edu.cn"
+else
+    echo "跳过 Docker 镜像源配置"
+fi
+
+# 检查 Docker Compose 是否安装
+if ! command -v docker-compose &> /dev/null; then
+    echo "安装 Docker Compose..."
+    curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+    chmod +x /usr/local/bin/docker-compose
+    
+    # 创建软链接（兼容性）
+    if [ ! -f /usr/bin/docker-compose ]; then
+        ln -s /usr/local/bin/docker-compose /usr/bin/docker-compose
     fi
+    echo "Docker Compose 安装完成"
+else
+    echo "Docker Compose 已安装，版本: $(docker-compose --version)"
+fi
 
 # 创建项目目录
 PROJECT_DIR="/opt/qqmusic-web"
