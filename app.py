@@ -51,7 +51,7 @@ app = Flask(__name__)
 CONFIG["MUSIC_DIR"].mkdir(exist_ok=True)
 
 # 线程池用于执行阻塞操作
-thread_pool = ThreadPoolExecutor(max_workers=4)
+thread_pool = ThreadPoolExecutor(max_workers=2)
 
 
 @dataclass
