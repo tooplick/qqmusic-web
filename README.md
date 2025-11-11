@@ -124,7 +124,7 @@ MUSIC_DIR = Path("./music")
 ## 更新日志
 
 ### v2.0.1
-- 解决docker镜像网络问题
+- 优化docker网络问题
 
 ### v2.0.0
 - Docker构建支持
