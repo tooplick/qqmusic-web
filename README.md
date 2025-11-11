@@ -43,11 +43,12 @@ qqmusic_web/
 #（Github）
 sudo -E bash -c "$(curl -fsSL https://raw.githubusercontent.com/tooplick/qqmusic_web/refs/heads/main/docker/install.sh)"
 ```
-**如果从 Github 下载脚本遇到网络问题，可以使用gitee仓库**
+**如果从 Github 下载脚本遇到网络问题，可以使用Gitee仓库**
 ```
 #（Gitee）
 sudo -E bash -c "$(curl -fsSL https://gitee.com/tooplick/qqmusic_web/raw/main/docker/giteeinstall.sh)"
 ```
+**Gitee仓库版本更新可能不及时，请谅解！**
 ### Python 3.11+
 
 1. **克隆项目**
