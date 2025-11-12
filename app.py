@@ -22,40 +22,14 @@ import json
 from dataclasses import dataclass
 from concurrent.futures import ThreadPoolExecutor
 
-# 简化的路径配置 - 直接使用正确的路径
-def get_credential_path():
-    """直接返回凭证文件路径"""
-    # 在 Docker 环境中，我们明确知道凭证文件在 /app/data/qqmusic_cred.pkl
-    if os.path.exists('/.dockerenv') or os.getenv('DOCKER_ENV') == 'true':
-        return Path("/app/data/qqmusic_cred.pkl")
-    # 在宿主机环境中
-    return Path(__file__).parent.absolute() / "qqmusic_cred.pkl"
-
-def get_music_dir():
-    """直接返回音乐目录路径"""
-    # 在 Docker 环境中
-    if os.path.exists('/.dockerenv') or os.getenv('DOCKER_ENV') == 'true':
-        return Path("/app/data/music")
-    # 在宿主机环境中
-    return Path(__file__).parent.absolute() / "music"
-
-def get_log_dir():
-    """直接返回日志目录路径"""
-    # 在 Docker 环境中
-    if os.path.exists('/.dockerenv') or os.getenv('DOCKER_ENV') == 'true':
-        return Path("/app/data/logs")
-    # 在宿主机环境中
-    return Path(__file__).parent.absolute() / "logs"
-
-# 配置常量 - 使用简化的路径
+# 配置常量 - 修改为挂载路径
 CONFIG = {
-    "CREDENTIAL_FILE": get_credential_path(),
-    "MUSIC_DIR": get_music_dir(),
-    "LOG_DIR": get_log_dir(),
-    "CLEANUP_INTERVAL": 10,
-    "CREDENTIAL_CHECK_INTERVAL": 10,
+    "CREDENTIAL_FILE": Path("/app/config/qqmusic_cred.pkl"),  # 修改为挂载路径
+    "MUSIC_DIR": Path("/app/music"),  # 修改为挂载路径
+    "CLEANUP_INTERVAL": 10,  # 清理间隔(秒)
+    "CREDENTIAL_CHECK_INTERVAL": 10,  # 凭证检查间隔(秒)
     "MAX_FILENAME_LENGTH": 100,
-    "COVER_SIZE": 800,
+    "COVER_SIZE": 800,  # 封面尺寸
     "DOWNLOAD_TIMEOUT": 60,
     "SEARCH_LIMIT": 10,
     "SERVER_HOST": "0.0.0.0",
@@ -67,17 +41,14 @@ logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler(get_log_dir() / "app.log", encoding="utf-8"),
+        logging.FileHandler("app.log", encoding="utf-8"),
         logging.StreamHandler()
     ]
 )
 logger = logging.getLogger("qqmusic_web")
 
 app = Flask(__name__)
-
-# 确保必要的目录存在
 CONFIG["MUSIC_DIR"].mkdir(exist_ok=True)
-CONFIG["LOG_DIR"].mkdir(exist_ok=True)
 
 # 线程池用于执行阻塞操作
 thread_pool = ThreadPoolExecutor(max_workers=4)
@@ -188,6 +159,7 @@ class CoverManager:
             if cover_data:
                 logger.info(f"使用VS值封面 [{candidate['source']}]: {url}")
                 return url
+
 
         logger.warning("未找到任何有效的封面URL")
         return None
@@ -899,10 +871,7 @@ def api_health():
         "status": "healthy",
         "timestamp": datetime.now().isoformat(),
         "music_dir_exists": CONFIG["MUSIC_DIR"].exists(),
-        "music_files_count": len(list(CONFIG["MUSIC_DIR"].glob("*"))) if CONFIG["MUSIC_DIR"].exists() else 0,
-        "base_path": str(BASE_PATH),
-        "credential_file_exists": CONFIG["CREDENTIAL_FILE"].exists(),
-        "docker_env": os.getenv('DOCKER_ENV', 'false')
+        "music_files_count": len(list(CONFIG["MUSIC_DIR"].glob("*"))) if CONFIG["MUSIC_DIR"].exists() else 0
     })
 
 
@@ -919,10 +888,6 @@ def init_app():
     start_credential_checker()
     start_cleanup_scheduler()
     logger.info("应用初始化完成")
-    logger.info(f"基础路径: {BASE_PATH}")
-    logger.info(f"凭证文件: {CONFIG['CREDENTIAL_FILE']}")
-    logger.info(f"音乐目录: {CONFIG['MUSIC_DIR']}")
-    logger.info(f"Docker 环境: {os.getenv('DOCKER_ENV', '未设置')}")
 
 
 if __name__ == '__main__':

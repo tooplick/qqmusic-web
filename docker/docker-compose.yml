@@ -8,16 +8,12 @@ services:
     ports:
       - "6022:6022"
     volumes:
-      # 挂载数据目录
-      - /root/qqmusic-web:/app/data
+      - /root/qqmusic_web/config:/app/config  # 挂载配置文件夹
+      - /root/qqmusic_web/music:/app/music    # 挂载音乐目录
+      - ..:/app  # 保留代码挂载用于开发
     environment:
-      - FLASK_ENV=production
-      - FLASK_DEBUG=0
-      - DOCKER_ENV=true
+      - FLASK_ENV=development
+      - FLASK_DEBUG=1
+    stdin_open: true
+    tty: true
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:6022/api/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s

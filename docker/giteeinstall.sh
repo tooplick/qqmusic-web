@@ -33,9 +33,7 @@ if command -v git &> /dev/null; then
             git remote set-url origin "$GITEE_REMOTE"
         fi
     
-        git fetch --all
-        git reset --hard origin/main
-        git clean -fd
+        git pull origin main
     else
         git clone https://gitee.com/tooplick/qqmusic_web.git .
     fi
