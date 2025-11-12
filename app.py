@@ -22,19 +22,44 @@ import json
 from dataclasses import dataclass
 from concurrent.futures import ThreadPoolExecutor
 
-# 配置常量 - 修改为挂载路径
-CONFIG = {
-    "CREDENTIAL_FILE": Path("/app/qqmusic_cred.pkl"),  # 修改为挂载路径
-    "MUSIC_DIR": Path("/app/music"),  # 修改为挂载路径
-    "CLEANUP_INTERVAL": 10,  # 清理间隔(秒)
-    "CREDENTIAL_CHECK_INTERVAL": 10,  # 凭证检查间隔(秒)
-    "MAX_FILENAME_LENGTH": 100,
-    "COVER_SIZE": 800,  # 封面尺寸
-    "DOWNLOAD_TIMEOUT": 60,
-    "SEARCH_LIMIT": 10,
-    "SERVER_HOST": "0.0.0.0",
-    "SERVER_PORT": 6022
-}
+
+# 动态配置
+def get_config():
+    """获取动态配置，支持容器和非容器环境"""
+    # 判断是否在容器中运行（通过检查 /app 目录是否存在）
+    is_container = Path("/app").exists()
+
+    if is_container:
+        # 容器环境 - 使用挂载路径
+        base_dir = Path("/app")
+        credential_file = base_dir / "qqmusic_cred.pkl"
+        music_dir = base_dir / "music"
+    else:
+        # 非容器环境 - 使用当前工作目录
+        base_dir = Path.cwd()
+        credential_file = base_dir / "qqmusic_cred.pkl"
+        music_dir = base_dir / "music"
+
+    # 确保目录存在
+    music_dir.mkdir(exist_ok=True)
+
+    return {
+        "CREDENTIAL_FILE": credential_file,
+        "MUSIC_DIR": music_dir,
+        "CLEANUP_INTERVAL": 20,  # 清理间隔(秒)
+        "CREDENTIAL_CHECK_INTERVAL": 60,  # 凭证检查间隔(秒)
+        "MAX_FILENAME_LENGTH": 100,
+        "COVER_SIZE": 800,  # 封面尺寸[150, 300, 500, 800]
+        "DOWNLOAD_TIMEOUT": 60,
+        "SEARCH_LIMIT": 10,
+        "SERVER_HOST": "0.0.0.0",
+        "SERVER_PORT": 6022,
+        "IS_CONTAINER": is_container  # 环境标识
+    }
+
+
+# 初始化配置
+CONFIG = get_config()
 
 # 配置日志
 logging.basicConfig(
@@ -48,7 +73,6 @@ logging.basicConfig(
 logger = logging.getLogger("qqmusic_web")
 
 app = Flask(__name__)
-CONFIG["MUSIC_DIR"].mkdir(exist_ok=True)
 
 # 线程池用于执行阻塞操作
 thread_pool = ThreadPoolExecutor(max_workers=4)
@@ -367,7 +391,7 @@ class MetadataManager:
 
 
 class CredentialManager:
-    """凭证管理器 - 修复版本"""
+    """凭证管理器"""
 
     def __init__(self):
         self.credential = None
@@ -378,7 +402,6 @@ class CredentialManager:
             "status": "未检测到凭证",
             "expired": True
         }
-        # 不在初始化时创建任何异步对象
 
     def load_credential(self) -> Optional[Credential]:
         """加载凭证"""
@@ -403,9 +426,8 @@ class CredentialManager:
             return False
 
     async def refresh_credential(self, cred: Credential) -> bool:
-        """刷新凭证 - 修复版本：确保在方法内部处理异步操作"""
+        """刷新凭证"""
         try:
-            # 在方法内部检查刷新能力，确保在当前事件循环中执行
             if await cred.can_refresh():
                 await cred.refresh()
                 return self.save_credential(cred)
@@ -415,7 +437,7 @@ class CredentialManager:
             return False
 
     def load_and_refresh_sync(self) -> Optional[Credential]:
-        """同步加载和刷新凭证 - 修复版本"""
+        """同步加载和刷新凭证"""
         if not CONFIG["CREDENTIAL_FILE"].exists():
             logger.info("本地无凭证文件，仅能下载免费歌曲")
             self.status.update({
@@ -440,9 +462,7 @@ class CredentialManager:
                 logger.info("本地凭证已过期，尝试自动刷新...")
                 self.status["status"] = "本地凭证已过期，尝试自动刷新..."
 
-                # 使用修复后的刷新方法
-                refresh_success = run_async(self.refresh_credential(cred))
-                if refresh_success:
+                if run_async(self.refresh_credential(cred)):
                     logger.info("凭证自动刷新成功!")
                     self.status.update({
                         "status": "凭证自动刷新成功!",
@@ -476,7 +496,7 @@ class CredentialManager:
             return None
 
     def check_and_refresh(self):
-        """检查并刷新凭证 - 修复版本"""
+        """检查并刷新凭证"""
         if not self.status["enabled"]:
             return
 
@@ -496,7 +516,6 @@ class CredentialManager:
                     "expired": True
                 })
 
-                # 使用修复后的刷新方法
                 if run_async(self.refresh_credential(self.credential)):
                     logger.info("凭证自动刷新成功!")
                     self.status.update({
@@ -875,7 +894,8 @@ def api_health():
         "status": "healthy",
         "timestamp": datetime.now().isoformat(),
         "music_dir_exists": CONFIG["MUSIC_DIR"].exists(),
-        "music_files_count": len(list(CONFIG["MUSIC_DIR"].glob("*"))) if CONFIG["MUSIC_DIR"].exists() else 0
+        "music_files_count": len(list(CONFIG["MUSIC_DIR"].glob("*"))) if CONFIG["MUSIC_DIR"].exists() else 0,
+        "environment": "container" if CONFIG["IS_CONTAINER"] else "native"
     })
 
 
@@ -891,7 +911,9 @@ def init_app():
     credential_manager.load_and_refresh_sync()
     start_credential_checker()
     start_cleanup_scheduler()
-    logger.info("应用初始化完成")
+    logger.info(f"应用初始化完成 - 运行环境: {'容器' if CONFIG['IS_CONTAINER'] else '原生'}")
+    logger.info(f"凭证文件路径: {CONFIG['CREDENTIAL_FILE']}")
+    logger.info(f"音乐目录路径: {CONFIG['MUSIC_DIR']}")
 
 
 if __name__ == '__main__':
