@@ -11,6 +11,13 @@ if [ "$EUID" -ne 0 ]; then
     exit 1
 fi
 
+
+# 创建项目目录
+PROJECT_DIR="/opt/qqmusic-web"
+echo "创建项目目录: $PROJECT_DIR"
+mkdir -p $PROJECT_DIR
+cd $PROJECT_DIR
+
 # 创建配置目录
 echo "创建配置目录..."
 mkdir -p /root/qqmusic_web
@@ -21,12 +28,6 @@ chmod 755 /root/qqmusic_web
 chmod 755 /root/qqmusic_web/music
 
 echo "配置目录已创建: /root/qqmusic_web/"
-
-# 创建项目目录
-PROJECT_DIR="/opt/qqmusic-web"
-echo "创建项目目录: $PROJECT_DIR"
-mkdir -p $PROJECT_DIR
-cd $PROJECT_DIR
 
 # 下载项目文件
 echo "下载项目文件..."
