@@ -32,7 +32,7 @@ def get_config():
     if is_container:
         # 容器环境 - 使用挂载路径
         base_dir = Path("/app")
-        credential_file = base_dir / "qqmusic_cred.pkl"
+        credential_file = base_dir / "credential/qqmusic_cred.pkl"
         music_dir = base_dir / "music"
     else:
         # 非容器环境 - 使用当前工作目录

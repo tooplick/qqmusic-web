@@ -20,11 +20,11 @@ cd $PROJECT_DIR
 
 # 创建配置目录
 echo "创建配置目录..."
-mkdir -p /root/qqmusic_web
+mkdir -p /root/qqmusic_web/credential
 mkdir -p /root/qqmusic_web/music
 
 # 设置目录权限
-chmod 755 /root/qqmusic_web
+chmod 755 /root/qqmusic_web/credential
 chmod 755 /root/qqmusic_web/music
 
 echo "配置目录已创建: /root/qqmusic_web/"
@@ -108,10 +108,10 @@ fi
 
 # 迁移凭证
 echo "检查并迁移凭证文件..."
-if [ ! -f "/root/qqmusic_web/qqmusic_cred.pkl" ]; then
+if [ ! -f "/root/qqmusic_web/credential/qqmusic_cred.pkl" ]; then
     echo "正在从Git迁移凭证文件..."
-    cp $PROJECT_DIR/credential/qqmusic_cred.pkl /root/qqmusic_web/qqmusic_cred.pkl
-    echo "凭证文件已迁移到 /root/qqmusic_web/qqmusic_cred.pkl"
+    cp $PROJECT_DIR/qqmusic_cred.pkl /root/qqmusic_web/credential/qqmusic_cred.pkl
+    echo "凭证文件已迁移到 /root/qqmusic_web/credential/qqmusic_cred.pkl"
 else
     echo "本地已有凭证文件，跳过迁移"
 fi
