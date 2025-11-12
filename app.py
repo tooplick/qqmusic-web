@@ -22,39 +22,40 @@ import json
 from dataclasses import dataclass
 from concurrent.futures import ThreadPoolExecutor
 
-# 动态确定基础路径 - 针对 Docker 环境优化
-def get_base_path():
-    """获取基础路径，优先使用 Docker 环境配置"""
-    # 方法1: 检查环境变量
-    if os.getenv('DOCKER_ENV') == 'true':
-        return Path('/app')
-    
-    # 方法2: 检查 /.dockerenv 文件
-    if os.path.exists('/.dockerenv'):
-        return Path('/app')
+# 简化的路径配置 - 直接使用正确的路径
+def get_credential_path():
+    """直接返回凭证文件路径"""
+    # 在 Docker 环境中，我们明确知道凭证文件在 /app/data/qqmusic_cred.pkl
+    if os.path.exists('/.dockerenv') or os.getenv('DOCKER_ENV') == 'true':
+        return Path("/app/data/qqmusic_cred.pkl")
+    # 在宿主机环境中
+    return Path(__file__).parent.absolute() / "qqmusic_cred.pkl"
 
-    # 方法3: 检查 cgroup
-    try:
-        with open('/proc/1/cgroup', 'rt') as f:
-            if 'docker' in f.read():
-                return Path('/app')
-    except:
-        pass
-    
-    # 在宿主机中运行，使用项目根目录
-    return Path(__file__).parent.absolute()
+def get_music_dir():
+    """直接返回音乐目录路径"""
+    # 在 Docker 环境中
+    if os.path.exists('/.dockerenv') or os.getenv('DOCKER_ENV') == 'true':
+        return Path("/app/data/music")
+    # 在宿主机环境中
+    return Path(__file__).parent.absolute() / "music"
 
-BASE_PATH = get_base_path()
+def get_log_dir():
+    """直接返回日志目录路径"""
+    # 在 Docker 环境中
+    if os.path.exists('/.dockerenv') or os.getenv('DOCKER_ENV') == 'true':
+        return Path("/app/data/logs")
+    # 在宿主机环境中
+    return Path(__file__).parent.absolute() / "logs"
 
-# 配置常量 - 使用动态路径
+# 配置常量 - 使用简化的路径
 CONFIG = {
-    "BASE_PATH": BASE_PATH,
-    "CREDENTIAL_FILE": BASE_PATH / "qqmusic_cred.pkl",
-    "MUSIC_DIR": BASE_PATH / "music",
-    "CLEANUP_INTERVAL": 10,  # 清理间隔(秒)
-    "CREDENTIAL_CHECK_INTERVAL": 10,  # 凭证检查间隔(秒)
+    "CREDENTIAL_FILE": get_credential_path(),
+    "MUSIC_DIR": get_music_dir(),
+    "LOG_DIR": get_log_dir(),
+    "CLEANUP_INTERVAL": 10,
+    "CREDENTIAL_CHECK_INTERVAL": 10,
     "MAX_FILENAME_LENGTH": 100,
-    "COVER_SIZE": 800,  # 封面尺寸
+    "COVER_SIZE": 800,
     "DOWNLOAD_TIMEOUT": 60,
     "SEARCH_LIMIT": 10,
     "SERVER_HOST": "0.0.0.0",
@@ -66,14 +67,17 @@ logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler(BASE_PATH / "app.log", encoding="utf-8"),
+        logging.FileHandler(get_log_dir() / "app.log", encoding="utf-8"),
         logging.StreamHandler()
     ]
 )
 logger = logging.getLogger("qqmusic_web")
 
 app = Flask(__name__)
+
+# 确保必要的目录存在
 CONFIG["MUSIC_DIR"].mkdir(exist_ok=True)
+CONFIG["LOG_DIR"].mkdir(exist_ok=True)
 
 # 线程池用于执行阻塞操作
 thread_pool = ThreadPoolExecutor(max_workers=4)
