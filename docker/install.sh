@@ -13,12 +13,11 @@ fi
 
 # 创建配置目录
 echo "创建配置目录..."
-mkdir -p /root/qqmusic_web/config
+mkdir -p /root/qqmusic_web
 mkdir -p /root/qqmusic_web/music
 
 # 设置目录权限
 chmod 755 /root/qqmusic_web
-chmod 755 /root/qqmusic_web/config
 chmod 755 /root/qqmusic_web/music
 
 echo "配置目录已创建: /root/qqmusic_web/"
@@ -97,6 +96,12 @@ else
     mv qqmusic_web-main/* ./
     mv qqmusic_web-main/.* ./ 2>/dev/null || true
     
+    # 如果存在旧的凭证文件，迁移到新位置
+if [ -f "$PROJECT_DIR/qqmusic_cred.pkl" ]; then
+    echo "检测到旧的凭证文件，正在迁移到新位置..."
+    cp $PROJECT_DIR/qqmusic_cred.pkl /root/qqmusic_web/qqmusic_cred.pkl
+    echo "凭证文件已迁移到 /root/qqmusic_web/qqmusic_cred.pkl"
+fi
     # 清理临时文件
     echo "清理临时文件..."
     rm -rf qqmusic_web-main
