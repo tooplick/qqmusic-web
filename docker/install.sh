@@ -102,6 +102,7 @@ else
         cp $PROJECT_DIR/qqmusic_cred.pkl /root/qqmusic_web/qqmusic_cred.pkl
         echo "凭证文件已迁移到 /root/qqmusic_web/qqmusic_cred.pkl"
     fi
+    
     # 清理临时文件
     echo "清理临时文件..."
     rm -rf qqmusic_web-main

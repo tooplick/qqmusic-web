@@ -24,7 +24,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 # 配置常量 - 修改为挂载路径
 CONFIG = {
-    "CREDENTIAL_FILE": Path("/app/config/qqmusic_cred.pkl"),  # 修改为挂载路径
+    "CREDENTIAL_FILE": Path("/app/qqmusic_cred.pkl"),  # 修改为挂载路径
     "MUSIC_DIR": Path("/app/music"),  # 修改为挂载路径
     "CLEANUP_INTERVAL": 10,  # 清理间隔(秒)
     "CREDENTIAL_CHECK_INTERVAL": 10,  # 凭证检查间隔(秒)
