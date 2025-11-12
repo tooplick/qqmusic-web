@@ -97,11 +97,11 @@ else
     mv qqmusic_web-main/.* ./ 2>/dev/null || true
     
     # 如果存在旧的凭证文件，迁移到新位置
-if [ -f "$PROJECT_DIR/qqmusic_cred.pkl" ]; then
-    echo "检测到旧的凭证文件，正在迁移到新位置..."
-    cp $PROJECT_DIR/qqmusic_cred.pkl /root/qqmusic_web/qqmusic_cred.pkl
-    echo "凭证文件已迁移到 /root/qqmusic_web/qqmusic_cred.pkl"
-fi
+    if [ -f "$PROJECT_DIR/qqmusic_cred.pkl" ]; then
+        echo "检测到旧的凭证文件，正在迁移到新位置..."
+        cp $PROJECT_DIR/qqmusic_cred.pkl /root/qqmusic_web/qqmusic_cred.pkl
+        echo "凭证文件已迁移到 /root/qqmusic_web/qqmusic_cred.pkl"
+    fi
     # 清理临时文件
     echo "清理临时文件..."
     rm -rf qqmusic_web-main
