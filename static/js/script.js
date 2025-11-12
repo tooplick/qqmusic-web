@@ -8,7 +8,7 @@ let isFullscreen = false;
 let currentSongQuality = 'flac';
 let currentRequestController = null;
 let isMuted = false;
-let lastVolume = 0.7;
+let lastVolume = 1.0;
 let currentPage = 1;
 let hasNextPage = false;
 let hasPrevPage = false;
@@ -16,7 +16,7 @@ let totalResults = 0;
 let totalPages = 1;
 let currentSearchQuery = '';
 const pageSize = 10;
-let loadingAudio = null; // 新增 - 当前加载中的audio实例
+let loadingAudio = null; // 当前加载中的audio实例
 
 // DOM元素
 const playPauseBtn = document.getElementById('play-pause-btn');
@@ -53,11 +53,11 @@ const paginationControls = document.getElementById('pagination-controls');
 // 智能封面获取函数
 function getSmartCoverUrl(songData) {
     if (!songData) {
-        return 'https://y.gtimg.cn/music/photo_new/T002R300x300M000003y8dsH2wBHlo_1.jpg';
+        return 'https://y.gtimg.cn/music/photo_new/T002R800x800M000003y8dsH2wBHlo_1.jpg';
     }
     const albumMid = songData.album_mid || songData.album?.mid;
     if (albumMid) {
-        return `https://y.gtimg.cn/music/photo_new/T002R300x300M000${albumMid}.jpg`;
+        return `https://y.gtimg.cn/music/photo_new/T002R800x800M000${albumMid}.jpg`;
     }
 
     const vsValues = songData.vs || songData.raw_data?.vs || [];
@@ -79,9 +79,9 @@ function getSmartCoverUrl(songData) {
     candidateVs.sort((a, b) => a.priority - b.priority);
 
     for (const candidate of candidateVs) {
-        return `https://y.qq.com/music/photo_new/T062R300x300M000${candidate.value}.jpg`;
+        return `https://y.qq.com/music/photo_new/T062R800x800M000${candidate.value}.jpg`;
     }
-    return 'https://y.gtimg.cn/music/photo_new/T002R300x300M000003y8dsH2wBHlo_1.jpg';
+    return 'https://y.gtimg.cn/music/photo_new/T002R800x800M000003y8dsH2wBHlo_1.jpg';
 }
 
 // 初始化播放器
@@ -142,9 +142,9 @@ async function checkBackendStatus() {
 
 // 音量初始值
 function setVolumeInitial() {
-    volumeLevel.style.width = '70%';
-    if (currentAudio) currentAudio.volume = 0.7;
-    lastVolume = 0.7;
+    volumeLevel.style.width = '100%';
+    if (currentAudio) currentAudio.volume = 1.0;
+    lastVolume = 1.0;
     updateVolumeIcon();
 }
 function increaseVolume() {
@@ -261,7 +261,7 @@ function renderSearchResults() {
         const coverUrl = getSmartCoverUrl(song);
         const duration = formatDuration(song.interval);
         resultItem.innerHTML = `
-            <img src="${coverUrl}" alt="${song.name}" onerror="this.src='https://y.gtimg.cn/music/photo_new/T002R300x300M000003y8dsH2wBHlo_1.jpg'">
+            <img src="${coverUrl}" alt="${song.name}" onerror="this.src='https://y.gtimg.cn/music/photo_new/T002R800x800M000003y8dsH2wBHlo_1.jpg'">
             <div class="result-item-info">
                 <div class="result-item-title">
                     ${song.name} ${song.vip ? '<span class="vip-badge">VIP</span>' : ''}
