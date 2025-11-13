@@ -117,6 +117,7 @@ sudo -E bash -c "$(curl -fsSL https://gitee.com/tooplick/qqmusic_web/raw/main/do
 ### v2.1.1
 - 播放改为流式传输
 - 添加显示歌词
+- 修复播放Bug
 ### v2.1.0
 - 重构整个前端
 - 支持在线播放搜索下载

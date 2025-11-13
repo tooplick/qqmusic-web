@@ -23,6 +23,10 @@ let currentLyrics = [];
 let currentLyricIndex = -1;
 let lyricsInterval = null;
 
+// 新增：播放队列控制
+let pendingPlayRequests = new Map(); // 存储待处理的播放请求
+let currentPlayToken = null; // 当前播放令牌
+
 // DOM元素
 const playPauseBtn = document.getElementById('play-pause-btn');
 const prevBtn = document.getElementById('prev-btn');
@@ -61,9 +65,24 @@ const lyricsDisplay = document.getElementById('lyrics-display');
 const lyricsContent = document.getElementById('lyrics-content');
 const closeLyricsBtn = document.getElementById('close-lyrics');
 
-// 歌词切换函数 - 修复版本
+// 生成唯一令牌
+function generatePlayToken() {
+    return Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+}
+
+// 清理所有待处理的播放请求
+function cleanupPendingRequests() {
+    for (let [token, controller] of pendingPlayRequests) {
+        if (controller) {
+            controller.abort();
+        }
+    }
+    pendingPlayRequests.clear();
+}
+
+// 歌词切换函数
 function toggleLyrics() {
-    console.log('toggleLyrics called'); // 调试日志
+    console.log('toggleLyrics called');
 
     if (lyricsDisplay.style.display === 'none' || !lyricsDisplay.style.display) {
         // 显示歌词，隐藏整个封面区域
@@ -117,7 +136,7 @@ function getSmartCoverUrl(songData) {
 
 // 初始化播放器
 function initPlayer() {
-    console.log('初始化播放器'); // 调试日志
+    console.log('初始化播放器');
 
     playPauseBtn.addEventListener('click', togglePlay);
     prevBtn.addEventListener('click', prevSong);
@@ -146,15 +165,15 @@ function initPlayer() {
     // 添加封面点击事件（切换歌词显示）
     if (albumCover) {
         albumCover.addEventListener('click', toggleLyrics);
-        console.log('已添加封面点击事件监听器'); // 调试日志
+        console.log('已添加封面点击事件监听器');
     } else {
-        console.error('未找到专辑封面元素'); // 调试日志
+        console.error('未找到专辑封面元素');
     }
 
     // 添加歌词显示区域点击事件
     if (lyricsDisplay) {
         lyricsDisplay.addEventListener('click', toggleLyrics);
-        console.log('已添加歌词显示区域点击事件'); // 调试日志
+        console.log('已添加歌词显示区域点击事件');
     }
 
     // 添加关闭按钮点击事件
@@ -163,7 +182,7 @@ function initPlayer() {
             e.stopPropagation(); // 阻止事件冒泡
             toggleLyrics();
         });
-        console.log('已添加关闭按钮点击事件'); // 调试日志
+        console.log('已添加关闭按钮点击事件');
     }
 
     checkBackendStatus();
@@ -174,11 +193,11 @@ function initPlayer() {
 // 获取歌词的函数
 async function fetchLyrics(songMid) {
     try {
-        console.log('获取歌词，歌曲MID:', songMid); // 调试日志
+        console.log('获取歌词，歌曲MID:', songMid);
         const response = await fetch(`/api/lyric/${songMid}`);
         if (!response.ok) throw new Error('获取歌词失败');
         const data = await response.json();
-        console.log('歌词数据:', data); // 调试日志
+        console.log('歌词数据:', data);
         return data;
     } catch (error) {
         console.error('获取歌词失败:', error);
@@ -495,22 +514,43 @@ function renderSearchResults() {
     });
 }
 
-// 修复核心播放逻辑
-async function playSong(index) {
-    if (index < 0 || index >= searchResults.length) {
-        showNotification('无效的歌曲索引', 'error');
-        return;
+// 严格的音频清理函数
+function cleanupAudio() {
+    if (currentRequestController) {
+        currentRequestController.abort();
+        currentRequestController = null;
     }
-    // 停止所有旧audio
-    if (currentRequestController) currentRequestController.abort();
+
+    // 清理所有待处理的播放请求
+    cleanupPendingRequests();
+
     if (currentAudio) {
         currentAudio.pause();
         currentAudio.currentTime = 0;
+        // 移除所有事件监听器
+        currentAudio.onloadedmetadata = null;
+        currentAudio.ontimeupdate = null;
+        currentAudio.onended = null;
+        currentAudio.onplay = null;
+        currentAudio.onpause = null;
+        currentAudio.onerror = null;
+        // 断开音频源
+        currentAudio.src = '';
+        currentAudio.load();
         currentAudio = null;
     }
+
     if (loadingAudio) {
         loadingAudio.pause();
         loadingAudio.currentTime = 0;
+        loadingAudio.onloadedmetadata = null;
+        loadingAudio.ontimeupdate = null;
+        loadingAudio.onended = null;
+        loadingAudio.onplay = null;
+        loadingAudio.onpause = null;
+        loadingAudio.onerror = null;
+        loadingAudio.src = '';
+        loadingAudio.load();
         loadingAudio = null;
     }
 
@@ -519,6 +559,21 @@ async function playSong(index) {
         clearInterval(lyricsInterval);
         lyricsInterval = null;
     }
+}
+
+// 修复核心播放逻辑 - 只播放最后一曲
+async function playSong(index) {
+    if (index < 0 || index >= searchResults.length) {
+        showNotification('无效的歌曲索引', 'error');
+        return;
+    }
+
+    // 生成新的播放令牌
+    const playToken = generatePlayToken();
+    currentPlayToken = playToken;
+
+    // 立即清理之前的播放请求和音频
+    cleanupAudio();
 
     const song = searchResults[index];
     currentSongIndex = index;
@@ -541,10 +596,13 @@ async function playSong(index) {
     if (song.mid) {
         try {
             const lyricsData = await fetchLyrics(song.mid);
+            // 检查是否还是当前播放请求
+            if (currentPlayToken !== playToken) return;
             displayLyrics(lyricsData);
         } catch (error) {
             console.error('歌词加载失败:', error);
-            // 如果没有获取到歌词，显示默认消息
+            // 检查是否还是当前播放请求
+            if (currentPlayToken !== playToken) return;
             lyricsContent.innerHTML = `
                 <div class="empty-lyrics">
                     <i class="fas fa-music"></i>
@@ -553,7 +611,8 @@ async function playSong(index) {
             `;
         }
     } else {
-        // 如果没有歌曲MID，显示默认消息
+        // 检查是否还是当前播放请求
+        if (currentPlayToken !== playToken) return;
         lyricsContent.innerHTML = `
             <div class="empty-lyrics">
                 <i class="fas fa-music"></i>
@@ -568,12 +627,15 @@ async function playSong(index) {
 
     playPauseBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
     playPauseBtn.disabled = true;
-    isPlaying = false; // 等待新音频加载
+    isPlaying = false;
 
     try {
         currentRequestController = new AbortController();
         const signal = currentRequestController.signal;
         const preferFlac = currentSongQuality === 'flac';
+
+        // 将当前控制器存入待处理列表
+        pendingPlayRequests.set(playToken, currentRequestController);
 
         // 1. 调用 /api/play_url 端点
         const response = await fetch('/api/play_url', {
@@ -586,77 +648,120 @@ async function playSong(index) {
             signal: signal
         });
 
+        // 检查是否还是当前播放请求
+        if (currentPlayToken !== playToken) {
+            console.log('播放请求已被取消，跳过播放');
+            return;
+        }
+
         const data = await response.json();
         if (!response.ok) throw new Error(data.error || '获取播放URL失败');
 
-        //  直接使用返回的 data.url
+        // 检查是否被取消
+        if (signal.aborted) {
+            return;
+        }
+
         const playUrl = data.url;
 
-        //  用 const 声明一个 *局部* 音频对象
-        const newAudio = new Audio(playUrl);
+        // 创建新的音频实例
+        const newAudio = new Audio();
 
-        //  将它赋值给全局 loadingAudio 仅用于跟踪
-        loadingAudio = newAudio;
-
-        //  将事件监听器绑定到 *局部的 newAudio*
-        newAudio.addEventListener('loadedmetadata', () => {
-            // 安全地引用 newAudio，
+        // 设置事件处理器
+        const handleLoadedMetadata = () => {
+            // 检查是否还是当前播放请求
+            if (currentPlayToken !== playToken) {
+                newAudio.pause();
+                return;
+            }
             totalTimeEl.textContent = formatDuration(newAudio.duration);
-        });
-        newAudio.addEventListener('timeupdate', updateProgress);
-        newAudio.addEventListener('ended', nextSong);
-        newAudio.volume = lastVolume;
-        updateVolumeIcon();
+        };
 
-        // 添加歌词相关事件监听
-        newAudio.addEventListener('timeupdate', () => {
+        const handleTimeUpdate = () => {
+            // 检查是否还是当前播放请求
+            if (currentPlayToken !== playToken) {
+                newAudio.pause();
+                return;
+            }
             updateProgress();
-            // 更新歌词显示
             if (lyricsDisplay.style.display !== 'none') {
                 updateLyricsDisplay(newAudio.currentTime);
             }
-        });
+        };
 
-        newAudio.addEventListener('play', () => {
-            // 开始歌词更新间隔
+        const handleEnded = () => {
+            // 检查是否还是当前播放请求
+            if (currentPlayToken !== playToken) return;
+            nextSong();
+        };
+
+        const handlePlay = () => {
+            // 检查是否还是当前播放请求
+            if (currentPlayToken !== playToken) {
+                newAudio.pause();
+                return;
+            }
             if (lyricsInterval) clearInterval(lyricsInterval);
             lyricsInterval = setInterval(() => {
                 if (lyricsDisplay.style.display !== 'none') {
                     updateLyricsDisplay(newAudio.currentTime);
                 }
             }, 100);
-        });
+        };
 
-        newAudio.addEventListener('pause', () => {
+        const handlePause = () => {
             if (lyricsInterval) {
                 clearInterval(lyricsInterval);
                 lyricsInterval = null;
             }
-        });
+        };
 
-        newAudio.addEventListener('ended', () => {
-            if (lyricsInterval) {
-                clearInterval(lyricsInterval);
-                lyricsInterval = null;
-            }
-        });
+        // 绑定事件
+        newAudio.addEventListener('loadedmetadata', handleLoadedMetadata);
+        newAudio.addEventListener('timeupdate', handleTimeUpdate);
+        newAudio.addEventListener('ended', handleEnded);
+        newAudio.addEventListener('play', handlePlay);
+        newAudio.addEventListener('pause', handlePause);
 
-        await newAudio.play(); //  播放局部对象
+        newAudio.volume = lastVolume;
+        updateVolumeIcon();
+
+        // 设置音频源并播放
+        newAudio.src = playUrl;
+        loadingAudio = newAudio;
+
+        await newAudio.play();
+
+        // 再次检查是否被取消
+        if (signal.aborted || currentPlayToken !== playToken) {
+            newAudio.pause();
+            return;
+        }
+
         isPlaying = true;
         playPauseBtn.innerHTML = '<i class="fas fa-pause"></i>';
 
-        // 替换全局audio
-        if (currentAudio && currentAudio !== loadingAudio) {
-            currentAudio.pause();
-        }
-        currentAudio = loadingAudio;
+        // 成功播放，更新当前音频引用
+        currentAudio = newAudio;
         loadingAudio = null;
+
+        // 从待处理列表中移除当前令牌
+        pendingPlayRequests.delete(playToken);
+
         showNotification(`正在播放: ${song.name} (${data.quality})`, 'success');
 
     } catch (error) {
+        // 从待处理列表中移除当前令牌
+        pendingPlayRequests.delete(playToken);
+
         if (error.name === 'AbortError') {
             return;
         }
+
+        console.error('播放错误:', error);
+
+        // 检查是否还是当前播放请求
+        if (currentPlayToken !== playToken) return;
 
         showNotification(`播放失败: ${error.message}`, 'error');
 
@@ -672,16 +777,22 @@ async function playSong(index) {
         playPauseBtn.innerHTML = '<i class="fas fa-play"></i>';
         isPlaying = false;
     } finally {
-        playPauseBtn.disabled = false;
-        currentRequestController = null;
-        loadingAudio = null;
+        // 检查是否还是当前播放请求
+        if (currentPlayToken === playToken) {
+            playPauseBtn.disabled = false;
+            currentRequestController = null;
+        }
+        // 确保清理loadingAudio（如果未被采用）
+        if (loadingAudio && loadingAudio !== currentAudio) {
+            loadingAudio.pause();
+            loadingAudio = null;
+        }
     }
 }
 
 // 播放/暂停切换
 function togglePlay() {
     if (!currentAudio) {
-        // 若没音频，尝试播放当前选中的
         if (searchResults.length > 0) {
             playSong(currentSongIndex);
         } else {
@@ -689,12 +800,22 @@ function togglePlay() {
         }
         return;
     }
+
+    // 检查音频是否有效
+    if (currentAudio.readyState === 0) {
+        showNotification('音频仍在加载中，请稍候', 'warning');
+        return;
+    }
+
     if (isPlaying) {
         currentAudio.pause();
         playPauseBtn.innerHTML = '<i class="fas fa-play"></i>';
         isPlaying = false;
     } else {
-        currentAudio.play();
+        currentAudio.play().catch(error => {
+            console.error('播放失败:', error);
+            showNotification('播放失败，请重试', 'error');
+        });
         playPauseBtn.innerHTML = '<i class="fas fa-pause"></i>';
         isPlaying = true;
     }
