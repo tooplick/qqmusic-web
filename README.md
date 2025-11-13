@@ -72,6 +72,10 @@ sudo -E bash -c "$(curl -fsSL https://gitee.com/tooplick/qqmusic_web/raw/main/do
 4. **访问应用**
    打开浏览器访问 `http://localhost:6022`
 
+5。 **配置文件夹**
+ - `/root/qqmusic_web/credential` #凭证文件夹
+ - `/root/qqmusic_web/music` #下载音乐本地目录
+
 ### 示例网站：[qq.ygking.top](https://qq.ygking.top/)
 
 ## API接口
@@ -128,6 +132,7 @@ MUSIC_DIR = Path("./music")
 ### v2.1.0
 - 重构整个前端
 - 支持在线播放搜索下载
+- docker挂载配置文件夹
 
 ### v2.0.3
 - 解决获取封面问题
