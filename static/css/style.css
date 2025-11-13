@@ -191,6 +191,8 @@ body {
     box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
     margin-bottom: 18px;
     transition: var(--transition);
+    position: relative;
+    cursor: pointer;
 }
 
 .player-section.fullscreen .album-cover {
@@ -201,6 +203,7 @@ body {
     width: 100%;
     height: 100%;
     object-fit: cover;
+    transition: var(--transition);
 }
 
 .song-info {
@@ -656,6 +659,109 @@ body {
     margin: 0 4px;
 }
 
+/* 新的歌词容器样式 - 融入背景 */
+.lyrics-display {
+    width: 100%;
+    max-width: 500px;
+    height: 300px;
+    background: transparent; /* 改为透明背景 */
+    border-radius: 12px;
+    margin-bottom: 18px;
+    display: none;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
+    cursor: pointer;
+}
+
+.lyrics-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    text-align: center;
+    overflow-y: auto;
+    padding: 20px;
+    /* 隐藏滚动条 */
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    /* 添加渐隐效果 */
+    mask-image: linear-gradient(
+        to bottom,
+        transparent 0%,
+        black 10%,
+        black 90%,
+        transparent 100%
+    );
+    -webkit-mask-image: linear-gradient(
+        to bottom,
+        transparent 0%,
+        black 10%,
+        black 90%,
+        transparent 100%
+    );
+}
+
+.lyrics-content::-webkit-scrollbar {
+    display: none;
+}
+
+.lyrics-line {
+    font-size: 16px;
+    line-height: 1.5;
+    margin: 4px 0;
+    padding: 8px 16px;
+    border-radius: 20px;
+    transition: all 0.3s ease;
+    opacity: 0.6;
+    transform: scale(0.95);
+    max-width: 90%;
+    word-break: break-word;
+    color: var(--dark-text); /* 使用深色文字确保可读性 */
+}
+
+.lyrics-line.active {
+    opacity: 1;
+    transform: scale(1);
+    color: var(--primary-color);
+    font-weight: 600;
+    background: rgba(49, 194, 124, 0.1);
+    backdrop-filter: blur(5px); /* 添加模糊背景效果 */
+}
+
+.empty-lyrics {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: var(--gray-text);
+    height: 100%;
+}
+
+.empty-lyrics i {
+    font-size: 48px;
+    margin-bottom: 16px;
+    opacity: 0.5;
+}
+
+.empty-lyrics p {
+    font-size: 16px;
+}
+
+/* 全屏模式下的歌词样式 */
+.player-section.fullscreen .lyrics-display {
+    max-width: 600px;
+    height: 400px;
+}
+
+.player-section.fullscreen .lyrics-line {
+    font-size: 20px;
+    margin: 12px 0;
+    padding: 12px 24px;
+}
+
+/* 移动端适配 */
 @media (max-width: 1200px) {
     .container {
         height: 85vh;
@@ -749,6 +855,36 @@ body {
         align-items: flex-start;
         gap: 8px;
     }
+
+    /* 移动端歌词样式 */
+    .lyrics-line {
+        font-size: 14px;
+        margin: 6px 0;
+        padding: 6px 12px;
+    }
+
+    .player-section.fullscreen .lyrics-line {
+        font-size: 18px;
+        margin: 10px 0;
+        padding: 10px 20px;
+    }
+
+    .lyrics-content {
+        mask-image: linear-gradient(
+            to bottom,
+            transparent 0%,
+            black 5%,
+            black 95%,
+            transparent 100%
+        );
+        -webkit-mask-image: linear-gradient(
+            to bottom,
+            transparent 0%,
+            black 5%,
+            black 95%,
+            transparent 100%
+        );
+    }
 }
 
 @media (max-width: 480px) {
@@ -795,5 +931,18 @@ body {
 
     .pagination-info {
         font-size: 12px;
+    }
+
+    /* 小屏幕歌词样式 */
+    .lyrics-line {
+        font-size: 13px;
+        margin: 4px 0;
+        padding: 4px 10px;
+    }
+
+    .player-section.fullscreen .lyrics-line {
+        font-size: 16px;
+        margin: 8px 0;
+        padding: 8px 16px;
     }
 }

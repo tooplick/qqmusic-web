@@ -822,6 +822,16 @@ def api_health():
         "environment": "container" if CONFIG["IS_CONTAINER"] else "native"
     })
 
+@app.route('/api/lyric/<song_mid>')
+def api_lyric(song_mid):
+    """获取歌词API"""
+    try:
+        lyrics_data = run_async(get_lyric(song_mid))
+        return jsonify(lyrics_data)
+    except Exception as e:
+        logger.error(f"获取歌词失败: {e}")
+        return jsonify({'error': f'获取歌词失败: {str(e)}'}), 500
+
 
 def stop_all_threads():
     """停止所有后台线程"""
