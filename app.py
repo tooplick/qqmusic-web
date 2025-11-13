@@ -47,8 +47,6 @@ def get_config():
     return {
         "CREDENTIAL_FILE": credential_file,
         "MUSIC_DIR": music_dir,
-        "CLEANUP_INTERVAL": 20,  # 清理间隔(秒)
-        "CREDENTIAL_CHECK_INTERVAL": 60,  # 凭证检查间隔(秒)
         "MAX_FILENAME_LENGTH": 100,
         "COVER_SIZE": 800,  # 封面尺寸[150, 300, 500, 800]
         "DOWNLOAD_TIMEOUT": 60,
@@ -399,7 +397,6 @@ class CredentialManager:
         self.status = {
             "enabled": True,
             "last_check": None,
-            "last_refresh": None,
             "status": "未检测到凭证",
             "expired": True
         }
@@ -426,17 +423,6 @@ class CredentialManager:
             logger.error(f"保存凭证文件失败: {e}")
             return False
 
-    async def refresh_credential(self, cred: Credential) -> bool:
-        """刷新凭证"""
-        try:
-            if await cred.can_refresh():
-                await cred.refresh()
-                return self.save_credential(cred)
-            return False
-        except Exception as e:
-            logger.error(f"刷新凭证失败: {e}")
-            return False
-
     def load_and_refresh_sync(self) -> Optional[Credential]:
         """同步加载和刷新凭证"""
         if not CONFIG["CREDENTIAL_FILE"].exists():
@@ -460,25 +446,12 @@ class CredentialManager:
             is_expired = run_async(check_expired(cred))
 
             if is_expired:
-                logger.info("本地凭证已过期，尝试自动刷新...")
-                self.status["status"] = "本地凭证已过期，尝试自动刷新..."
-
-                if run_async(self.refresh_credential(cred)):
-                    logger.info("凭证自动刷新成功!")
-                    self.status.update({
-                        "status": "凭证自动刷新成功!",
-                        "expired": False,
-                        "last_refresh": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                    })
-                    self.credential = cred
-                    return cred
-                else:
-                    logger.info("凭证不支持刷新或刷新失败，将以未登录方式下载")
-                    self.status.update({
-                        "status": "凭证不支持刷新或刷新失败，将以未登录方式下载",
-                        "expired": True
-                    })
-                    return None
+                logger.info("本地凭证已过期，将以未登录方式下载")
+                self.status.update({
+                    "status": "本地凭证已过期，将以未登录方式下载",
+                    "expired": True
+                })
+                return None
             else:
                 logger.info("使用本地凭证登录成功!")
                 self.status.update({
@@ -495,106 +468,6 @@ class CredentialManager:
                 "expired": True
             })
             return None
-
-    def check_and_refresh(self):
-        """检查并刷新凭证"""
-        if not self.status["enabled"]:
-            return
-
-        self.status["last_check"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-        if not self.credential:
-            self.load_and_refresh_sync()
-            return
-
-        try:
-            is_expired = run_async(check_expired(self.credential))
-
-            if is_expired:
-                logger.info("检测到凭证已过期，尝试自动刷新...")
-                self.status.update({
-                    "status": "检测到凭证已过期，尝试自动刷新...",
-                    "expired": True
-                })
-
-                if run_async(self.refresh_credential(self.credential)):
-                    logger.info("凭证自动刷新成功!")
-                    self.status.update({
-                        "status": "凭证自动刷新成功!",
-                        "expired": False,
-                        "last_refresh": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                    })
-                else:
-                    logger.info("凭证不支持刷新")
-                    self.status.update({
-                        "status": "凭证不支持刷新",
-                        "expired": True
-                    })
-            else:
-                self.status["status"] = "凭证状态正常"
-                self.status["expired"] = False
-
-        except Exception as e:
-            logger.error(f"检查凭证时出错: {e}")
-            self.status.update({
-                "status": f"检查凭证时出错: {e}",
-                "expired": True
-            })
-
-
-class CleanupManager:
-    """清理管理器"""
-
-    def __init__(self):
-        self.status = {
-            "enabled": True,
-            "last_run": None,
-            "next_run": None,
-            "files_cleaned": 0,
-            "total_cleaned": 0
-        }
-
-    def cleanup_music_folder(self):
-        """清空music文件夹"""
-        try:
-            if not CONFIG["MUSIC_DIR"].exists():
-                CONFIG["MUSIC_DIR"].mkdir(exist_ok=True)
-                return
-
-            files = [f for f in CONFIG["MUSIC_DIR"].iterdir() if f.is_file()]
-            file_count = len(files)
-
-            if file_count > 0:
-                deleted_count = 0
-                for file_path in files:
-                    try:
-                        file_path.unlink()
-                        deleted_count += 1
-                    except Exception as e:
-                        logger.warning(f"删除文件失败 {file_path}: {e}")
-
-                # 更新状态
-                self.status.update({
-                    "last_run": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                    "files_cleaned": deleted_count,
-                    "total_cleaned": self.status["total_cleaned"] + deleted_count,
-                    "next_run": (datetime.now() + timedelta(
-                        seconds=CONFIG["CLEANUP_INTERVAL"]
-                    )).strftime("%Y-%m-%d %H:%M:%S")
-                })
-
-                logger.info(f"已清理 {deleted_count} 个文件，下次运行: {self.status['next_run']}")
-            else:
-                self.status.update({
-                    "last_run": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                    "files_cleaned": 0,
-                    "next_run": (datetime.now() + timedelta(
-                        seconds=CONFIG["CLEANUP_INTERVAL"]
-                    )).strftime("%Y-%m-%d %H:%M:%S")
-                })
-
-        except Exception as e:
-            logger.error(f"清理任务错误: {e}")
 
 
 class MusicDownloader:
@@ -702,13 +575,10 @@ class MusicDownloader:
 
 # 全局管理器实例
 credential_manager = CredentialManager()
-cleanup_manager = CleanupManager()
 music_downloader = MusicDownloader(credential_manager)
 
 # 任务控制变量
-cleanup_thread = None
-credential_thread = None
-stop_threads = False
+thread_pool = ThreadPoolExecutor(max_workers=4)
 
 
 def run_async(coro):
@@ -722,36 +592,6 @@ def run_async(coro):
     else:
         future = asyncio.run_coroutine_threadsafe(coro, loop)
         return future.result()
-
-
-def start_credential_checker():
-    """启动凭证检查任务"""
-    global credential_thread, stop_threads
-
-    def credential_check_loop():
-        while not stop_threads and credential_manager.status["enabled"]:
-            credential_manager.check_and_refresh()
-            time.sleep(CONFIG["CREDENTIAL_CHECK_INTERVAL"])
-
-    if credential_thread is None or not credential_thread.is_alive():
-        credential_thread = threading.Thread(target=credential_check_loop, daemon=True)
-        credential_thread.start()
-        logger.info(f"自动凭证检查任务已启动，每{CONFIG['CREDENTIAL_CHECK_INTERVAL']}秒检查一次")
-
-
-def start_cleanup_scheduler():
-    """启动定时清理任务"""
-    global cleanup_thread, stop_threads
-
-    def cleanup_loop():
-        while not stop_threads and cleanup_manager.status["enabled"]:
-            cleanup_manager.cleanup_music_folder()
-            time.sleep(CONFIG["CLEANUP_INTERVAL"])
-
-    if cleanup_thread is None or not cleanup_thread.is_alive():
-        cleanup_thread = threading.Thread(target=cleanup_loop, daemon=True)
-        cleanup_thread.start()
-        logger.info(f"自动清理任务已启动，每{CONFIG['CLEANUP_INTERVAL']}秒检查一次")
 
 
 # Flask路由
@@ -887,34 +727,10 @@ def api_file(filename):
         return jsonify({'error': '文件不存在'}), 404
 
 
-@app.route('/api/cleanup/status')
-def api_cleanup_status():
-    """获取清理任务状态"""
-    return jsonify(cleanup_manager.status)
-
-
-@app.route('/api/cleanup/toggle', methods=['POST'])
-def api_cleanup_toggle():
-    """切换清理任务状态"""
-    data = request.get_json(silent=True) or {}
-    enabled = data.get('enabled', True)
-    cleanup_manager.status["enabled"] = enabled
-    return jsonify({"enabled": cleanup_manager.status["enabled"]})
-
-
 @app.route('/api/credential/status')
 def api_credential_status():
     """获取凭证状态"""
     return jsonify(credential_manager.status)
-
-
-@app.route('/api/credential/toggle', methods=['POST'])
-def api_credential_toggle():
-    """切换凭证检查状态"""
-    data = request.get_json(silent=True) or {}
-    enabled = data.get('enabled', True)
-    credential_manager.status["enabled"] = enabled
-    return jsonify({"enabled": credential_manager.status["enabled"]})
 
 
 @app.route('/api/health')
@@ -929,20 +745,14 @@ def api_health():
     })
 
 
-
-
 def stop_all_threads():
     """停止所有后台线程"""
-    global stop_threads
-    stop_threads = True
     thread_pool.shutdown(wait=False)
 
 
 def init_app():
     """初始化应用"""
     credential_manager.load_and_refresh_sync()
-    start_credential_checker()
-    start_cleanup_scheduler()
     logger.info(f"应用初始化完成 - 运行环境: {'容器' if CONFIG['IS_CONTAINER'] else '原生'}")
     logger.info(f"凭证文件路径: {CONFIG['CREDENTIAL_FILE']}")
     logger.info(f"音乐目录路径: {CONFIG['MUSIC_DIR']}")
