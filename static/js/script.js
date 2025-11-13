@@ -301,9 +301,7 @@ async function playSong(index) {
         return;
     }
     // 停止所有旧audio
-    // Abort前一个fetch请求
     if (currentRequestController) currentRequestController.abort();
-    // 暂停所有旧audio
     if (currentAudio) {
         currentAudio.pause();
         currentAudio.currentTime = 0;
@@ -334,32 +332,42 @@ async function playSong(index) {
         currentRequestController = new AbortController();
         const signal = currentRequestController.signal;
         const preferFlac = currentSongQuality === 'flac';
-        const response = await fetch('/api/download', {
+
+        // 1. 调用 /api/play_url 端点
+        const response = await fetch('/api/play_url', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({
                 song_data: song,
-                prefer_flac: preferFlac,
-                add_metadata: true
+                prefer_flac: preferFlac
             }),
             signal: signal
         });
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.error || '下载失败');
-        const playUrl = `/api/file/${encodeURIComponent(data.filename)}`;
-        loadingAudio = new Audio(playUrl);
 
-        // 事件监听
-        loadingAudio.addEventListener('loadedmetadata', () => {
-            totalTimeEl.textContent = formatDuration(loadingAudio.duration);
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || '获取播放URL失败');
+
+        //  直接使用返回的 data.url
+        const playUrl = data.url;
+
+        //  用 const 声明一个 *局部* 音频对象
+        const newAudio = new Audio(playUrl);
+
+        //  将它赋值给全局 loadingAudio 仅用于跟踪
+        loadingAudio = newAudio;
+
+        //  将事件监听器绑定到 *局部的 newAudio*
+        newAudio.addEventListener('loadedmetadata', () => {
+            // 安全地引用 newAudio，
+            totalTimeEl.textContent = formatDuration(newAudio.duration);
         });
-        loadingAudio.addEventListener('timeupdate', updateProgress);
-        loadingAudio.addEventListener('ended', nextSong);
-        loadingAudio.volume = lastVolume;
+        newAudio.addEventListener('timeupdate', updateProgress);
+        newAudio.addEventListener('ended', nextSong);
+        newAudio.volume = lastVolume;
         updateVolumeIcon();
 
-        await loadingAudio.play(); // 首次播放
-        isPlaying = true; // 标记正在播放
+        await newAudio.play(); //  播放局部对象
+        isPlaying = true;
         playPauseBtn.innerHTML = '<i class="fas fa-pause"></i>';
 
         // 替换全局audio
@@ -368,23 +376,24 @@ async function playSong(index) {
         }
         currentAudio = loadingAudio;
         loadingAudio = null;
-        showNotification(`正在播放: ${song.name}`, 'success');
+        showNotification(`正在播放: ${song.name} (${data.quality})`, 'success');
+
     } catch (error) {
         if (error.name === 'AbortError') {
-            // 加载已取消
             return;
         }
-        if (error.message.includes('VIP') && !song.vip) {
+
+        showNotification(`播放失败: ${error.message}`, 'error');
+
+        if (error.message.includes('VIP')) {
             showNotification('这首歌是VIP歌曲，需要登录才能播放', 'error');
-        } else {
-            showNotification(`播放失败: ${error.message}`, 'error');
-            if (currentSongQuality === 'flac') {
-                showNotification('FLAC音质不可用，自动尝试MP3格式', 'warning');
-                currentSongQuality = 'mp3';
-                document.querySelector('input[name="quality"][value="mp3"]').checked = true;
-                setTimeout(() => playSong(index), 500);
-            }
+        } else if (currentSongQuality === 'flac' && !error.message.includes('VIP')) {
+            showNotification('FLAC音质不可用，自动尝试MP3格式', 'warning');
+            currentSongQuality = 'mp3';
+            document.querySelector('input[name="quality"][value="mp3"]').checked = true;
+            setTimeout(() => playSong(index), 500);
         }
+
         playPauseBtn.innerHTML = '<i class="fas fa-play"></i>';
         isPlaying = false;
     } finally {

@@ -668,6 +668,84 @@ def api_search():
         return jsonify({'error': f'搜索失败: {str(e)}'}), 500
 
 
+@app.route('/api/play_url', methods=['POST'])
+def api_play_url():
+    """获取歌曲播放URL API"""
+    data = request.get_json(silent=True) or {}
+    song_data = data.get('song_data')
+    prefer_flac = data.get('prefer_flac', False)
+
+    if not song_data:
+        return jsonify({'error': '缺少歌曲数据'}), 400
+
+    try:
+        # 从字典创建SongInfo对象
+        song_info = SongInfo(
+            mid=song_data.get('mid', ''),
+            name=song_data.get('name', ''),
+            singers=song_data.get('singers', ''),
+            vip=song_data.get('vip', False),
+            album=song_data.get('album', ''),
+            album_mid=song_data.get('album_mid', ''),
+            interval=song_data.get('interval', 0),
+            raw_data=song_data.get('raw_data')
+        )
+
+        # 检查VIP歌曲权限
+        if song_info.vip and not credential_manager.credential:
+            return jsonify({
+                'error': '这首歌是VIP歌曲，需要登录才能播放'
+            }), 403
+
+        # 设置音质获取策略
+        if prefer_flac:
+            quality_order = [
+                (SongFileType.FLAC, "FLAC"),
+                (SongFileType.MP3_320, "320kbps"),
+                (SongFileType.MP3_128, "128kbps")
+            ]
+        else:
+            quality_order = [
+                (SongFileType.MP3_320, "320kbps"),
+                (SongFileType.MP3_128, "128kbps")
+            ]
+
+        # 尝试获取URL
+        for file_type, quality_name in quality_order:
+            logger.info(f"尝试获取 {quality_name} 播放URL: {song_info.name}")
+
+            # 异步运行获取URL的函数
+            urls = run_async(get_song_urls(
+                [song_info.mid],
+                file_type=file_type,
+                credential=credential_manager.credential
+            ))
+            url = urls.get(song_info.mid)
+
+            if not url:
+                continue
+
+            # API可能返回列表，取第一个
+            if isinstance(url, list):
+                url = url[0]
+
+            if url:
+                logger.info(f"获取URL成功 ({quality_name}): {song_info.name}")
+                # 成功获取URL，立即返回
+                return jsonify({
+                    'url': url,
+                    'quality': quality_name,
+                    'song_mid': song_info.mid
+                })
+
+        # 如果所有音质都失败
+        return jsonify({'error': '所有音质均无法获取播放URL'}), 500
+
+    except Exception as e:
+        logger.error(f"获取播放URL失败: {e}")
+        return jsonify({'error': f'获取播放URL失败: {str(e)}'}), 500
+
+
 @app.route('/api/download', methods=['POST'])
 def api_download():
     """下载歌曲API"""

@@ -85,6 +85,12 @@ sudo -E bash -c "$(curl -fsSL https://gitee.com/tooplick/qqmusic_web/raw/main/do
 - **参数**: `{ "keyword": "歌曲名" }`
 - **返回**: 搜索结果列表
 
+### 播放接口 (流式播放)
+
+- **端点**: `POST /api/play_url`
+- **参数**: `{ "song_data": {...}, "prefer_flac": true }` 
+- **返回**: 歌曲的直接媒体 URL 及音质信息。
+
 ### 下载接口
 - **端点**: `POST /api/download`
 - **参数**: `{ "song_data": {...}, "prefer_flac": true }`
@@ -100,6 +106,10 @@ sudo -E bash -c "$(curl -fsSL https://gitee.com/tooplick/qqmusic_web/raw/main/do
 
 - **端点**: `GET /api/cleanup/status`
 - **功能**: 获取清理任务状态
+
+- **端点**: `GET /api/health`
+- **功能**: 检查后端服务的健康状态和关键目录信息。
+
 
 ## 配置说明
 
@@ -129,6 +139,10 @@ MUSIC_DIR = Path("./music")
 - 不得用于商业用途
 
 ## 更新日志
+### v2.1.1
+- 播放改为流式传输
+- 精简代码
+
 ### v2.1.0
 - 重构整个前端
 - 支持在线播放搜索下载
