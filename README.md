@@ -40,8 +40,8 @@ sudo -E bash -c "$(curl -fsSL https://gitee.com/tooplick/qqmusic_web/raw/main/do
    ```
 
 4. **访问应用**
-   打开浏览器访问 `http://localhost:6022`
-   凭证管理界面 `http://localhost:6022/admin`
+   - 打开浏览器访问 `http://localhost:6022`
+   - 凭证管理界面 `http://localhost:6022/admin`
 
 5。 **配置文件夹**
  - `/root/qqmusic_web/credential` #凭证文件夹
@@ -50,7 +50,7 @@ sudo -E bash -c "$(curl -fsSL https://gitee.com/tooplick/qqmusic_web/raw/main/do
 ### 示例网站：[qq.ygking.top](https://qq.ygking.top/)
 
 ## API接口
-
+详情见：[**API doc.md**](https://github.com/tooplick/qqmusic_web/blob/main/API%20doc.md)
 
 
 ## 更新日志
