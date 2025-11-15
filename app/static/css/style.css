@@ -1040,10 +1040,7 @@ body {
 }
 
 @media (max-height: 500px) {
-    .lyrics-container {
-        display: none; /* 极低高度时隐藏歌词 */
-    }
-    
+
     .album-cover {
         width: min(20vh, 180px);
         height: min(20vh, 180px);
