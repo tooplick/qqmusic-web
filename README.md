@@ -55,7 +55,7 @@ sudo -E bash -c "$(curl -fsSL https://gitee.com/tooplick/qqmusic_web/raw/main/do
 
 ## 更新日志
 
-详情见：[**Update Log.md**](./Update%20log.md)
+详情见：[**Update log.md**](./Update%20log.md)
 
 ## 作者信息
 
