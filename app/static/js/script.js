@@ -464,6 +464,15 @@ function goToNextPage() {
         performSearch(currentSearchQuery, currentPage);
     }
 }
+
+// 截断文本函数 - 您可以在这里调整最大长度
+function truncateText(text, maxLength = 12) {
+    if (text && text.length > maxLength) {
+        return text.substring(0, maxLength) + '...';
+    }
+    return text;
+}
+
 function renderSearchResults() {
     resultsContainer.innerHTML = '';
     if (searchResults.length === 0) {
@@ -480,11 +489,15 @@ function renderSearchResults() {
         resultItem.className = `result-item ${index === currentSongIndex ? 'active' : ''}`;
         const coverUrl = getSmartCoverUrl(song);
         const duration = formatDuration(song.interval);
+        
+        // 使用截断函数处理歌曲名
+        const truncatedSongName = truncateText(song.name, 12);
+        
         resultItem.innerHTML = `
             <img src="${coverUrl}" alt="${song.name}" onerror="this.src='https://y.gtimg.cn/music/photo_new/T002R800x800M000003y8dsH2wBHlo_1.jpg'">
             <div class="result-item-info">
                 <div class="result-item-title">
-                    ${song.name} ${song.vip ? '<span class="vip-badge">VIP</span>' : ''}
+                    ${truncatedSongName} ${song.vip ? '<span class="vip-badge">VIP</span>' : ''}
                 </div>
                 <div class="result-item-artist">${song.singers}</div>
             </div>
