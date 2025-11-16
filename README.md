@@ -52,10 +52,19 @@ sudo -E bash -c "$(curl -fsSL https://gitee.com/tooplick/qqmusic_web/raw/main/do
 ## API接口
 详情见：[**API doc.md**](./API%20doc.md)
 
+## 项目结构
+
+详情见：[**Project structure.md**](./Project%20structure.md)
 
 ## 更新日志
 
 详情见：[**Update log.md**](./Update%20log.md)
+
+## 技术栈
+
+- **后端**: Flask, qqmusic-api, aiohttp, mutagen
+- **前端**: HTML5, CSS3, JavaScript
+- **异步**: asyncio, aiohttp
 
 ## 作者信息
 
