@@ -880,6 +880,23 @@ body {
         border-right: none;
         border-bottom: 1px solid var(--light-border);
     }
+    .results-section {
+        display: none !important;
+    }
+    
+    /* 调整播放器区域占据全部空间 */
+    .player-section {
+        flex: 1 !important;
+        width: 100% !important;
+        border-right: none !important;
+    }
+    
+    /* 确保主内容区域只有播放器 */
+    .main-content {
+        flex-direction: column;
+    }
+
+
 }
 
 @media (max-width: 768px) {
