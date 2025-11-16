@@ -50,12 +50,12 @@ sudo -E bash -c "$(curl -fsSL https://gitee.com/tooplick/qqmusic_web/raw/main/do
 ### 示例网站：[qq.ygking.top](https://qq.ygking.top/)
 
 ## API接口
-详情见：[**API doc.md**](https://github.com/tooplick/qqmusic_web/blob/main/API%20doc.md)
+详情见：[**API doc.md**](./API%20doc.md)
 
 
 ## 更新日志
 
-详情见：[**Update Log.md**](https://github.com/tooplick/qqmusic_web/blob/main/Update%20Log.md)
+详情见：[**Update Log.md**](./Update%20Log.md)
 
 ## 作者信息
 
