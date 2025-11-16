@@ -4,47 +4,48 @@
 qqmusic_web/
 │
 ├── app/                           # Flask 应用主目录
-│   ├── __init__.py               # Flask 应用初始化
-│   ├── config.py                 # 配置文件（数据库、路径、API Key 等）
-│   ├── models/                   # 数据模型（数据库或数据结构）
+│   ├── __init__.py                # Flask 应用初始化
+│   ├── config.py                  # 配置文件（数据库、路径、API Key 等）
+│   ├── models/                    # 数据模型（数据库或数据结构）
 │   │   ├── __init__.py
-│   │   ├── download_result.py    # 下载结果的数据模型
-│   │   └── song_info.py          # 歌曲信息的数据模型
-│   ├── routes/                   # 路由层，处理请求
+│   │   ├── download_result.py     # 下载结果的数据模型
+│   │   └── song_info.py           # 歌曲信息的数据模型
+│   ├── routes/                    # 路由层，处理请求
 │   │   ├── __init__.py
-│   │   ├── api_routes.py         # 提供 API 接口的路由
-│   │   ├── admin_routes.py       # 凭证管理后台路由
-│   │   └── web_routes.py         # 前端页面路由
-│   ├── services/                 # 服务层，处理业务逻辑
+│   │   ├── api_routes.py          # 提供 API 接口的路由
+│   │   ├── admin_routes.py        # 凭证管理后台路由
+│   │   └── web_routes.py          # 前端页面路由
+│   ├── services/                  # 服务层，处理业务逻辑
 │   │   ├── __init__.py
-│   │   ├── credential_manager.py # 管理 QQ 音乐登录凭证
-│   │   ├── file_manager.py       # 文件读写管理
-│   │   ├── cover_manager.py      # 专辑封面下载/处理
-│   │   ├── metadata_manager.py   # 歌曲元数据处理
-│   │   └── music_downloader.py   # 音乐下载核心逻辑
-│   ├── static/                   # 静态文件（CSS、JS、image）
-│   ├── templates/                # 前端 HTML
-│   └── utils/                    # 工具类
-│       └── thread_utils.py       # 线程相关工具
+│   │   ├── credential_manager.py  # 管理 QQ 音乐登录凭证
+│   │   ├── file_manager.py        # 文件读写管理
+│   │   ├── cover_manager.py       # 专辑封面下载/处理
+│   │   ├── metadata_manager.py    # 歌曲元数据处理
+│   │   └── music_downloader.py    # 音乐下载核心逻辑
+│   ├── static/                    # 静态文件（CSS、JS、image）
+│   ├── templates/                 # 前端 HTML
+│   └── utils/                     # 工具类
+│       └── thread_utils.py        # 线程相关工具
 │
 ├── credential/                  
-│   └── qqmusic_cred.pkl          # QQ 音乐登录凭证
+│   └── qqmusic_cred.pkl           # QQ 音乐登录凭证
 │
-├── docker/                       # Docker 部署相关文件
-│   ├── docker-compose.yml
-│   ├── dockerfile
-│   ├── giteeinstall.sh         
-│   └── install.sh                # Github安装脚本
+├── docker/                        # Docker 部署相关文件
+│   ├── docker-compose.yml         # Docker Compose 配置文件
+│   ├── dockerfile                 # Docker 镜像构建文件
+│   ├── giteeinstall.sh            # Gitee 安装脚本
+│   └── install.sh                 # Github 安装脚本
 │
-├── LICENSE                       # 许可证文件
-├── music/                        # 下载的音乐文件存储目录
-├── poetry.lock                   # Poetry 依赖锁文件
-├── pyproject.toml                # Poetry 项目配置文件
-├── README.md                     # 项目说明文档
-├── requirements.txt              # Python 依赖文件（pip）
-├── run.py                        # 启动 Flask 应用入口
-├── Project structure.md          # 项目结构说明
-└── Update log.md                 # 更新日志
+├── LICENSE                        # 许可证文件
+├── music/                         # 下载的音乐文件存储目录
+├── run.py                         # 启动 Flask 应用入口
+├── README.md                      # 项目说明文档
+├── Project structure.md           # 项目结构说明
+├── Update log.md                  # 更新日志
+├── pyproject.toml                 # Poetry 项目配置文件
+├── requirements.txt               # Python 依赖文件（pip）
+├── poetry.lock                    # Poetry 依赖锁文件
+└── uv.lock                        # uv 依赖锁文件
 ```
 
 ## 详细文件说明
