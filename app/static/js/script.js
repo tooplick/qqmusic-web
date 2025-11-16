@@ -157,7 +157,7 @@ function initPlayer() {
         option.addEventListener('change', function() {
             currentSongQuality = this.value;
             if (searchResults.length > 0 && currentSongIndex < searchResults.length && currentAudio) {
-                playSong(currentSongIndex);
+                console.log(`音质设置为: ${currentSongQuality} (仅影响下载)`);
             }
         });
     });
