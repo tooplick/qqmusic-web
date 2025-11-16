@@ -88,6 +88,7 @@ qqmusic_web/
 - **`requirements.txt`**: Python依赖包列表（pip）
 - **`pyproject.toml`**: Poetry项目配置
 - **`poetry.lock`**: Poetry依赖锁文件
+- **`uv.lock`**: uv依赖锁文件
 
 ### 启动文件
 - **`run.py`**: Flask应用主入口，初始化所有组件并启动服务器
