@@ -132,7 +132,6 @@ def api_play_url():
                 credential=credential_manager.credential
             ))
             url = urls.get(song_data.get('mid', ''))
-
             if not url:
                 continue
 
@@ -141,7 +140,7 @@ def api_play_url():
                 url = url[0]
 
             if url:
-                logger.info(f"获取URL成功 ({quality_name}): {song_data.get('name', '')}")
+                logger.info(f"获取URL成功'{song_data.get('name', '')}({quality_name})': {url}")
                 return jsonify({
                     'url': url,
                     'quality': quality_name,
