@@ -55,39 +55,7 @@ sudo -E bash -c "$(curl -fsSL https://gitee.com/tooplick/qqmusic_web/raw/main/do
 
 ## 更新日志
 
-### v2.1.2
-- 重写项目结构
-- 更新凭证管理页面
-- 一键清空/music文件夹
-
-### v2.1.1
-- 播放改为流式传输
-- 添加显示歌词
-- 修复播放Bug
-### v2.1.0
-- 重构整个前端
-- 支持在线播放搜索下载
-- docker挂载配置文件夹
-
-### v2.0.3
-- 解决获取封面问题
-
-### v2.0.2
-- 优化线程处理
-
-### v2.0.1
-- 优化docker网络问题
-
-### v2.0.0
-- Docker构建支持
-
-### v1.0.1
-- 自动添加封面歌词
-
-### v1.0.0
-- 基础搜索和下载功能
-- 多音质支持
-- 自动清理机制
+详情见：[**Update Log.md**](https://github.com/tooplick/qqmusic_web/blob/main/Update%20Log.md)
 
 ## 作者信息
 
