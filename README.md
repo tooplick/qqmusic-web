@@ -21,7 +21,7 @@ sudo -E bash -c "$(curl -fsSL https://raw.githubusercontent.com/tooplick/qqmusic
 sudo -E bash -c "$(curl -fsSL https://gitee.com/tooplick/qqmusic_web/raw/main/docker/giteeinstall.sh)"
 ```
 **Gitee仓库版本更新可能不及时，请谅解！**
-### Python 3.11+
+### Python 3.10+
 
 1. **克隆项目**
    ```bash

@@ -4,8 +4,6 @@ import os
 def get_project_root():
     """获取项目根目录（包含 run.py 的目录）"""
     current_file = Path(__file__).resolve()
-    
-    # 当前文件在 app/config.py，所以项目根目录是祖父目录
     project_root = current_file.parent.parent
     
     # 验证项目根目录是否包含 run.py
