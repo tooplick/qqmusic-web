@@ -1,0 +1,59 @@
+# 下载项目文件
+echo "下载项目文件..."
+
+# 检查 git 命令是否存在
+if command -v git &> /dev/null; then
+    if [ -d ".git" ]; then
+        echo "项目已存在,更新到最新版本..."
+        # 检查当前远程仓库地址
+        CURRENT_REMOTE=$(git remote get-url origin 2>/dev/null || echo "")
+        GITEE_REMOTE="https://gitee.com/tooplick/qqmusic_web.git"
+        
+        if [ "$CURRENT_REMOTE" != "$GITEE_REMOTE" ]; then
+            echo "修正远程仓库地址为 Gitee..."
+            git remote set-url origin "$GITEE_REMOTE"
+        fi
+    
+        git pull origin main
+    else
+        git clone https://gitee.com/tooplick/qqmusic_web.git .
+    fi
+    echo "项目文件下载完成"
+else
+    echo "git 命令不存在，使用 wget 下载项目文件..."
+    
+    # 检查 wget 命令是否存在
+    if ! command -v wget &> /dev/null; then
+        echo "安装 wget..."
+        if command -v apt-get &> /dev/null; then
+            apt-get update
+            apt-get install -y wget
+        elif command -v yum &> /dev/null; then
+            yum install -y wget
+        else
+            echo "错误: 无法安装 wget，请手动安装后重试"
+            exit 1
+        fi
+    fi
+    
+    # 删除原有项目文件
+    echo "删除原有项目文件..."
+    rm -rf ./*
+    rm -rf ./.* 2>/dev/null || true
+    
+    # 下载项目zip文件
+    echo "wget项目文件..."
+    wget -O qqmusic_web.zip https://gitee.com/tooplick/qqmusic_web/repository/archive/main.zip
+    
+    # 检查unzip命令是否存在
+    if ! command -v unzip &> /dev/null; then
+        echo "安装 unzip..."
+        if command -v apt-get &> /dev/null; then
+            apt-get install -y unzip
+        elif command -v yum &> /dev/null; then
+            yum install -y unzip
+        else
+            echo "错误: 无法安装 unzip，请手动安装后重试"
+            exit 1
+        fi
+    fi

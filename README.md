@@ -62,7 +62,7 @@ sudo -E bash -c "$(curl -fsSL https://gitee.com/tooplick/qqmusic_web/raw/main/do
 
 ## 技术栈
 
-- **后端**: Flask, qqmusic-api, aiohttp, mutagen
+- **后端**: Flask, aiohttp, mutagen
 - **前端**: HTML5, CSS3, JavaScript
 - **异步**: asyncio, aiohttp
 
