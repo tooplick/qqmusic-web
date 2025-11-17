@@ -5,8 +5,8 @@ qqmusic_web/
 │
 ├── app/                           # Flask 应用主目录
 │   ├── __init__.py                # Flask 应用初始化
-│   ├── config.py                  # 配置文件（数据库、路径、API Key 等）
-│   ├── models/                    # 数据模型（数据库或数据结构）
+│   ├── config.py                  # 配置文件,动态根目录
+│   ├── models/                    # 数据模型
 │   │   ├── __init__.py
 │   │   ├── download_result.py     # 下载结果的数据模型
 │   │   └── song_info.py           # 歌曲信息的数据模型
