@@ -43,9 +43,13 @@ sudo -E bash -c "$(curl -fsSL https://gitee.com/tooplick/qqmusic_web/raw/main/do
    - 打开浏览器访问 `http://localhost:6022`
    - 凭证管理界面 `http://localhost:6022/admin`
 
-5。 **配置文件夹**
- - `/root/qqmusic_web/credential` #凭证文件夹
- - `/root/qqmusic_web/music` #下载音乐本地目录
+5.  **配置文件夹**
+      - `/root/qqmusic_web/credential` #凭证文件夹
+      - `/root/qqmusic_web/music` #下载音乐本地目录  
+
+
+6. **Tip**:  
+      - 如果报错请 `pip install qqmusic-api-python flask aiohttp mutagen`
 
 ### 示例网站：[qq.ygking.top](https://qq.ygking.top/)
 
