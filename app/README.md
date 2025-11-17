@@ -1,4 +1,4 @@
-```
+```tree
 app/
 ├── models/               # 数据模型层
 ├── routes/               # 路由控制层
