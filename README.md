@@ -49,7 +49,7 @@ sudo -E bash -c "$(curl -fsSL https://gitee.com/tooplick/qqmusic_web/raw/main/do
 
 
 6. **Tip**:  
-      - 如果报错请 `pip install qqmusic-api-python flask aiohttp mutagen`
+      - 如果报错请  `pip install qqmusic-api-python flask aiohttp mutagen`
 
 ### 示例网站：[qq.ygking.top](https://qq.ygking.top/)
 
