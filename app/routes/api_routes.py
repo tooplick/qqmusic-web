@@ -102,11 +102,28 @@ def api_play_url():
     try:
         credential_manager = get_credential_manager()
 
+        # 关键：每次都获取最新的凭证（从内存或文件重新加载）
+        credential = credential_manager.get_credential()
+
         # 检查VIP歌曲权限
-        if song_data.get('vip', False) and not credential_manager.credential:
+        if song_data.get('vip', False) and not credential:
             return jsonify({
                 'error': '这首歌是VIP歌曲，需要登录才能播放'
             }), 403
+
+        # 如果凭证存在但过期了，尝试刷新
+        if credential:
+            try:
+                is_expired = run_async(check_expired(credential))
+                if is_expired:
+                    logger.info("凭证已过期，尝试刷新...")
+                    can_refresh = run_async(credential.can_refresh())
+                    if can_refresh:
+                        run_async(credential.refresh())
+                        # 保存刷新后的凭证到文件并更新内存
+                        credential_manager.save_credential(credential)
+            except Exception as e:
+                logger.error(f"检查/刷新凭证失败: {e}")
 
         # 设置音质获取策略
         if prefer_flac:
@@ -132,6 +149,7 @@ def api_play_url():
                 credential=credential_manager.credential
             ))
             url = urls.get(song_data.get('mid', ''))
+
             if not url:
                 continue
 
@@ -140,7 +158,7 @@ def api_play_url():
                 url = url[0]
 
             if url:
-                logger.info(f"获取URL成功'{song_data.get('name', '')}({quality_name})': {url}")
+                logger.info(f"获取URL成功 ({quality_name}): {song_data.get('name', '')}")
                 return jsonify({
                     'url': url,
                     'quality': quality_name,

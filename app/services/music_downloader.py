@@ -3,11 +3,13 @@ from pathlib import Path
 from typing import Optional
 from qqmusic_api.song import get_song_urls, SongFileType
 from qqmusic_api.lyric import get_lyric
+from qqmusic_api.login import check_expired
 from ..models import SongInfo, DownloadResult
 from .file_manager import FileManager
 from .metadata_manager import MetadataManager
 
 logger = logging.getLogger("qqmusic_web")
+
 
 class MusicDownloader:
     """音乐下载器"""
@@ -38,6 +40,66 @@ class MusicDownloader:
             f"{song_info.name} - {song_info.singers}"
         )
 
+        # 获取凭证（使用最新凭证）
+        credential = None
+        vip_required = song_info.vip
+
+        # 对于VIP歌曲，需要有效凭证
+        if vip_required:
+            credential = self.credential_manager.get_credential()
+            if not credential:
+                logger.warning(f"VIP歌曲 {song_info.name} 需要登录凭证，但未找到凭证")
+                # VIP歌曲没有凭证，只能尝试128kbps
+                quality_order = [(SongFileType.MP3_128, "128kbps")]
+            else:
+                # 检查凭证是否过期
+                try:
+                    is_expired = await check_expired(credential)
+                    if is_expired:
+                        logger.warning(f"VIP歌曲 {song_info.name} 的凭证已过期")
+                        # 尝试刷新凭证
+                        can_refresh = await credential.can_refresh()
+                        if can_refresh:
+                            logger.info(f"尝试刷新凭证...")
+                            await credential.refresh()
+                            # 保存刷新后的凭证
+                            if self.credential_manager.save_credential(credential):
+                                logger.info(f"凭证已刷新并保存")
+                            else:
+                                logger.warning(f"凭证刷新成功但保存失败")
+                        else:
+                            logger.warning(f"凭证不支持刷新，尝试使用匿名下载")
+                            credential = None
+                            quality_order = [(SongFileType.MP3_128, "128kbps")]
+                except Exception as e:
+                    logger.error(f"检查凭证状态失败: {e}")
+                    credential = None
+                    quality_order = [(SongFileType.MP3_128, "128kbps")]
+        else:
+            # 对于免费歌曲，尝试使用凭证但非必须
+            credential = self.credential_manager.get_credential()
+            if credential:
+                try:
+                    # 检查凭证是否过期
+                    is_expired = await check_expired(credential)
+                    if is_expired:
+                        logger.info("免费歌曲：凭证已过期，尝试刷新...")
+                        can_refresh = await credential.can_refresh()
+                        if can_refresh:
+                            await credential.refresh()
+                            if self.credential_manager.save_credential(credential):
+                                logger.info("凭证已刷新并保存")
+                            else:
+                                logger.warning("凭证刷新成功但保存失败")
+                                # 使用过期的凭证继续尝试
+                        else:
+                            logger.info("凭证不支持刷新，继续使用过期凭证尝试")
+                except Exception as e:
+                    logger.error(f"检查免费歌曲凭证失败: {e}")
+                    # 即使凭证检查失败，仍尝试使用凭证（可能仍然有效）
+
+        logger.info(f"下载歌曲 '{song_info.name}'，VIP={vip_required}，使用凭证: {credential is not None}")
+
         # 尝试不同音质
         for file_type, quality_name in quality_order:
             filepath = Path(self.config["MUSIC_DIR"]) / f"{safe_filename}{file_type.e}"
@@ -48,7 +110,8 @@ class MusicDownloader:
                     filename=f"{safe_filename}{file_type.e}",
                     quality=quality_name,
                     filepath=str(filepath),
-                    cached=True
+                    cached=True,
+                    used_credential=credential is not None
                 )
 
             logger.info(f"尝试下载 {quality_name}: {safe_filename}{file_type.e}")
@@ -57,11 +120,12 @@ class MusicDownloader:
             urls = await get_song_urls(
                 [song_info.mid],
                 file_type=file_type,
-                credential=self.credential_manager.credential
+                credential=credential
             )
             url = urls.get(song_info.mid)
 
             if not url:
+                logger.warning(f"未获取到 {quality_name} 的下载URL")
                 continue
 
             if isinstance(url, list):
@@ -77,7 +141,8 @@ class MusicDownloader:
                     filename=f"{safe_filename}{file_type.e}",
                     quality=quality_name,
                     filepath=str(filepath),
-                    cached=False
+                    cached=False,
+                    used_credential=credential is not None
                 )
 
                 # 添加元数据
