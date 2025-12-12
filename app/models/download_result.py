@@ -8,3 +8,4 @@ class DownloadResult:
     filepath: str
     cached: bool = False
     metadata_added: bool = False
+    used_credential: bool = False
