@@ -1,5 +1,5 @@
 #!/bin/bash
-# QQMusic Web 一键安装脚本
+# QQMusic Web 一键安装脚本 - 修复版
 
 set -e
 
@@ -13,6 +13,8 @@ fi
 
 # 将wget下载逻辑封装为函数
 wget_download_project() {
+    echo "使用wget下载项目文件..."
+    
     # 检查 wget 命令是否存在
     if ! command -v wget &> /dev/null; then
         echo "安装 wget..."
@@ -28,7 +30,7 @@ wget_download_project() {
     fi
     
     echo "下载项目文件..."
-    wget -O qqmusic_web.zip https://github.ygking.top/github.com/tooplick/qqmusic_web/archive/main.zip
+    wget -O qqmusic_web.zip https://github.com/tooplick/qqmusic_web/archive/refs/heads/main.zip
     
     # 检查unzip命令是否存在
     if ! command -v unzip &> /dev/null; then
@@ -63,6 +65,13 @@ wget_download_project() {
 # 创建项目目录
 PROJECT_DIR="/opt/qqmusic-web"
 echo "创建项目目录: $PROJECT_DIR"
+
+# 如果目录已存在，先清理
+if [ -d "$PROJECT_DIR" ]; then
+    echo "清理现有目录..."
+    rm -rf "$PROJECT_DIR"
+fi
+
 mkdir -p $PROJECT_DIR
 
 # 创建配置目录
@@ -82,14 +91,14 @@ echo "下载项目文件..."
 # 进入项目目录
 cd $PROJECT_DIR
 
-# 清理目录
-echo "清理项目目录..."
-rm -rf ./* ./.git* 2>/dev/null || true
-
 # 检查 git 命令是否存在
 if command -v git &> /dev/null; then
     echo "使用git克隆项目..."
-    if git clone --depth=1 https://github.ygking.top/github.com/tooplick/qqmusic_web.git .; then
+    # 确保目录是空的
+    rm -rf ./* ./.git* 2>/dev/null || true
+    
+    # 尝试直接克隆
+    if git clone --depth=1 https://github.com/tooplick/qqmusic_web.git .; then
         echo "项目文件下载完成"
     else
         echo "Git克隆失败，尝试使用wget..."
@@ -104,14 +113,10 @@ fi
 
 # 迁移凭证
 echo "检查并迁移凭证文件..."
-if [ ! -f "/root/qqmusic_web/credential/qqmusic_cred.pkl" ]; then
+if [ ! -f "/root/qqmusic_web/credential/qqmusic_cred.pkl" ] && [ -f "$PROJECT_DIR/credential/qqmusic_cred.pkl" ]; then
     echo "正在从Git迁移凭证文件..."
-    if [ -f "$PROJECT_DIR/credential/qqmusic_cred.pkl" ]; then
-        cp $PROJECT_DIR/credential/qqmusic_cred.pkl /root/qqmusic_web/credential/qqmusic_cred.pkl
-        echo "凭证文件已迁移到 /root/qqmusic_web/credential/qqmusic_cred.pkl"
-    else
-        echo "警告: 未找到源凭证文件"
-    fi
+    cp $PROJECT_DIR/credential/qqmusic_cred.pkl /root/qqmusic_web/credential/qqmusic_cred.pkl
+    echo "凭证文件已迁移到 /root/qqmusic_web/credential/qqmusic_cred.pkl"
 else
     echo "本地已有凭证文件，跳过迁移"
 fi
@@ -137,15 +142,18 @@ fi
 if [ "$IS_CHINA" = true ]; then
     echo "检测到中国地区网络环境，修改 Dockerfile 使用国内镜像源"
     
-    # 备份原始 Dockerfile
+    # 检查Dockerfile是否存在
     if [ -f "docker/dockerfile" ]; then
+        # 备份原始 Dockerfile
         cp docker/dockerfile docker/dockerfile.backup
+        
+        # 修改 Dockerfile 使用国内镜像
+        sed -i 's|FROM python:3.11-slim|FROM docker.1ms.run/library/python:3.11-slim|' docker/dockerfile
+        
+        echo "Dockerfile 已修改为使用国内镜像源"
+    else
+        echo "警告: 未找到 docker/dockerfile"
     fi
-    
-    # 修改 Dockerfile 使用国内镜像
-    sed -i 's|FROM python:3.11-slim|FROM docker.1ms.run/library/python:3.11-slim|' docker/dockerfile
-    
-    echo "Dockerfile 已修改为使用国内镜像源"
 else
     echo "非中国大陆网络环境，使用默认官方镜像源"
 fi
@@ -162,7 +170,7 @@ fi
 # 检查 Docker Compose 是否安装
 if ! command -v docker-compose &> /dev/null; then
     echo "安装 Docker Compose..."
-    curl -L "https://github.ygking.top/github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+    curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
     chmod +x /usr/local/bin/docker-compose
     echo "Docker Compose 安装完成"
 fi
@@ -209,23 +217,13 @@ if docker-compose ps | grep -q "Up"; then
     echo ""
     
     # 获取本地IP地址
-    
-    # 使用hostname命令
-    LOCAL_IP=$(hostname -I 2>/dev/null | awk '{print $1}')
-    
-    # 使用ip命令
-    if [ -z "$LOCAL_IP" ] || [ "$LOCAL_IP" = "" ]; then
-        LOCAL_IP=$(ip route get 1 2>/dev/null | awk '{print $7}' | head -1)
+    LOCAL_IP="127.0.0.1"
+    if command -v hostname &> /dev/null; then
+        LOCAL_IP=$(hostname -I 2>/dev/null | awk '{print $1}')
     fi
     
-    # 如果前两种方法都失败，尝试从网络接口获取
     if [ -z "$LOCAL_IP" ] || [ "$LOCAL_IP" = "" ]; then
-        LOCAL_IP=$(ip addr show 2>/dev/null | grep -oP 'inet \K[\d.]+' | grep -v '127.0.0.1' | head -1)
-    fi
-    
-    # 如果仍然无法获取IP，使用默认值
-    if [ -z "$LOCAL_IP" ] || [ "$LOCAL_IP" = "" ]; then
-        LOCAL_IP="127.0.0.1"
+        LOCAL_IP=$(ip route get 1 2>/dev/null | awk '{print $7}' | head -1 || echo "127.0.0.1")
     fi
     
     echo "本地访问地址: http://localhost:6022"
@@ -240,9 +238,6 @@ if docker-compose ps | grep -q "Up"; then
         if [ -n "$PUBLIC_IP" ] && [ "$PUBLIC_IP" != "" ]; then
             echo "公网访问地址: http://${PUBLIC_IP}:6022"
             echo "注意: 请确保防火墙已开放 6022 端口"
-        else
-            echo "无法自动获取公网IP，请手动检查网络配置"
-            echo "您可以通过以下命令查看公网IP: curl ifconfig.me"
         fi
     fi
     
