@@ -35,18 +35,6 @@ echo "下载项目文件..."
 if command -v git &> /dev/null; then
     if [ -d ".git" ]; then
         echo "项目已存在,更新到最新版本..."
-        # 检查当前远程仓库地址
-        CURRENT_REMOTE=$(git remote get-url origin 2>/dev/null || echo "")
-        GITEE_REMOTE="https://github.com/tooplick/qqmusic_web.git"
-        
-        if [ "$CURRENT_REMOTE" != "$GITEE_REMOTE" ]; then
-            echo "修正远程仓库地址为 GitHub..."
-            git remote set-url origin "$GITEE_REMOTE"
-        fi
-        git fetch origin
-        git reset --hard origin/main
-        git clean -fd
-    else
         git clone https://github.com/tooplick/qqmusic_web.git .
     fi
     echo "项目文件下载完成"
@@ -110,7 +98,7 @@ fi
 echo "检查并迁移凭证文件..."
 if [ ! -f "/root/qqmusic_web/credential/qqmusic_cred.pkl" ]; then
     echo "正在从Git迁移凭证文件..."
-    cp $PROJECT_DIR/qqmusic_cred.pkl /root/qqmusic_web/credential/qqmusic_cred.pkl
+    cp $PROJECT_DIR/credential/qqmusic_cred.pkl /root/qqmusic_web/credential/qqmusic_cred.pkl
     echo "凭证文件已迁移到 /root/qqmusic_web/credential/qqmusic_cred.pkl"
 else
     echo "本地已有凭证文件，跳过迁移"
