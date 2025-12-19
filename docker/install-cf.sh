@@ -1,5 +1,5 @@
 #!/bin/bash
-# QQMusic Web 一键安装脚本 - 修复版
+# QQMusic Web 一键安装脚本
 
 set -e
 
@@ -30,7 +30,7 @@ wget_download_project() {
     fi
     
     echo "下载项目文件..."
-    wget -O qqmusic_web.zip https://github.com/tooplick/qqmusic_web/archive/refs/heads/main.zip
+    wget -O qqmusic_web.zip https://github.ygking.top/github.com/tooplick/qqmusic_web/archive/refs/heads/main.zip
     
     # 检查unzip命令是否存在
     if ! command -v unzip &> /dev/null; then
@@ -98,7 +98,7 @@ if command -v git &> /dev/null; then
     rm -rf ./* ./.git* 2>/dev/null || true
     
     # 尝试直接克隆
-    if git clone --depth=1 https://github.com/tooplick/qqmusic_web.git .; then
+    if git clone --depth=1 https://github.ygking.top/github.com/tooplick/qqmusic_web.git .; then
         echo "项目文件下载完成"
     else
         echo "Git克隆失败，尝试使用wget..."
@@ -170,7 +170,7 @@ fi
 # 检查 Docker Compose 是否安装
 if ! command -v docker-compose &> /dev/null; then
     echo "安装 Docker Compose..."
-    curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+    curl -L "https://github.ygking.top/github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
     chmod +x /usr/local/bin/docker-compose
     echo "Docker Compose 安装完成"
 fi
