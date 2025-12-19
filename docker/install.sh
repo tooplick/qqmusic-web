@@ -11,18 +11,11 @@ if [ "$EUID" -ne 0 ]; then
     exit 1
 fi
 
+
 # 创建项目目录
 PROJECT_DIR="/opt/qqmusic-web"
 echo "创建项目目录: $PROJECT_DIR"
 mkdir -p $PROJECT_DIR
-
-# 进入项目目录前，如果目录非空，先清理
-if [ "$(ls -A $PROJECT_DIR 2>/dev/null)" ]; then
-    echo "项目目录非空，清理目录..."
-    rm -rf $PROJECT_DIR/*
-    # 注意：这里不删除隐藏文件，特别是 .git 目录
-fi
-
 cd $PROJECT_DIR
 
 # 创建配置目录
@@ -40,28 +33,20 @@ echo "配置目录已创建: /root/qqmusic_web/"
 echo "下载项目文件..."
 # 检查 git 命令是否存在
 if command -v git &> /dev/null; then
-    # 检查当前目录是否已经是git仓库
     if [ -d ".git" ]; then
         echo "项目已存在,更新到最新版本..."
         # 检查当前远程仓库地址
         CURRENT_REMOTE=$(git remote get-url origin 2>/dev/null || echo "")
-        GITHUB_REMOTE="https://github.com/tooplick/qqmusic_web.git"
+        GITEE_REMOTE="https://github.com/tooplick/qqmusic_web.git"
         
-        if [ "$CURRENT_REMOTE" != "$GITHUB_REMOTE" ]; then
+        if [ "$CURRENT_REMOTE" != "$GITEE_REMOTE" ]; then
             echo "修正远程仓库地址为 GitHub..."
-            git remote set-url origin "$GITHUB_REMOTE"
+            git remote set-url origin "$GITEE_REMOTE"
         fi
         git fetch origin
         git reset --hard origin/main
         git clean -fd
     else
-        # 目录非空但不是git仓库，先清理再克隆
-        if [ "$(ls -A . 2>/dev/null)" ]; then
-            echo "目录非空但非git仓库，清理后重新克隆..."
-            rm -rf ./* ./.??* 2>/dev/null || true
-        fi
-        
-        echo "克隆项目到本地..."
         git clone https://github.com/tooplick/qqmusic_web.git .
     fi
     echo "项目文件下载完成"
@@ -84,7 +69,8 @@ else
     
     # 删除原有项目文件
     echo "删除原有项目文件..."
-    rm -rf ./* ./.??* 2>/dev/null || true
+    rm -rf ./*
+    rm -rf ./.* 2>/dev/null || true
     
     # 下载项目zip文件
     echo "wget项目文件..."
@@ -122,7 +108,7 @@ fi
 
 # 迁移凭证
 echo "检查并迁移凭证文件..."
-if [ ! -f "/root/qqmusic_web/credential/qqmusic_cred.pkl" ] && [ -f "$PROJECT_DIR/qqmusic_cred.pkl" ]; then
+if [ ! -f "/root/qqmusic_web/credential/qqmusic_cred.pkl" ]; then
     echo "正在从Git迁移凭证文件..."
     cp $PROJECT_DIR/qqmusic_cred.pkl /root/qqmusic_web/credential/qqmusic_cred.pkl
     echo "凭证文件已迁移到 /root/qqmusic_web/credential/qqmusic_cred.pkl"
@@ -138,7 +124,7 @@ if echo "$IP_INFO" | grep -q "\"country\":\"China\""; then
     IS_CHINA=true
 else
     # 检查特定中国网站的可访问性
-    if curl -s --connect-timeout 5 "https://www.baidu.com" > /dev/null 2>&1 && \
+    if curl -s --connect-timeout 5 "https://www.baidu.com" > /dev/null && \
        ! curl -s --connect-timeout 5 "https://www.google.com" > /dev/null 2>&1; then
         IS_CHINA=true
     else
@@ -221,6 +207,7 @@ if docker-compose ps | grep -q "Up"; then
     echo ""
     
     # 获取本地IP地址
+    
     # 使用hostname命令
     LOCAL_IP=$(hostname -I 2>/dev/null | awk '{print $1}')
     
@@ -239,26 +226,20 @@ if docker-compose ps | grep -q "Up"; then
         LOCAL_IP="127.0.0.1"
     fi
     
-    echo "访问地址:"
-    echo "  - 本地访问: http://localhost:6022"
-    if [ "$LOCAL_IP" != "127.0.0.1" ] && [ "$LOCAL_IP" != "" ]; then
-        echo "  - 局域网访问: http://${LOCAL_IP}:6022"
+    echo "本地访问地址: http://localhost:6022"
+    if [ "$LOCAL_IP" != "127.0.0.1" ]; then
+        echo "局域网访问地址: http://${LOCAL_IP}:6022"
     fi
     
-    echo ""
-    
     # 获取公网IP地址
-    echo "正在获取公网IP地址..."
     PUBLIC_IP=$(curl -s --max-time 5 ifconfig.me || curl -s --max-time 5 ipinfo.io/ip || curl -s --max-time 5 api.ipify.org || echo "")
     
-    if [ -n "$PUBLIC_IP" ] && [ "$PUBLIC_IP" != "" ] && [[ ! "$PUBLIC_IP" =~ ^(127\.|10\.|172\.(1[6-9]|2[0-9]|3[0-1])\.|192\.168\.) ]]; then
-        echo "  - 公网访问: http://${PUBLIC_IP}:6022"
-        echo "    注意: 请确保防火墙已开放 6022 端口"
-    elif [ -n "$PUBLIC_IP" ]; then
-        echo "  - 检测到IP地址为内网地址: ${PUBLIC_IP}"
-        echo "    提示: 您的服务器可能位于NAT后面，无法直接通过公网访问"
+    if [ -n "$PUBLIC_IP" ] && [ "$PUBLIC_IP" != "" ]; then
+        echo "公网访问地址: http://${PUBLIC_IP}:6022"
+        echo "注意: 请确保防火墙已开放 6022 端口"
     else
-        echo "  - 无法获取公网IP地址"
+        echo "无法自动获取公网IP，请手动检查网络配置"
+        echo "您可以通过以下命令查看公网IP: curl ifconfig.me"
     fi
     
     echo ""
@@ -273,9 +254,6 @@ if docker-compose ps | grep -q "Up"; then
     echo "   更新服务: cd $PROJECT_DIR/docker && sudo docker-compose up -d --build --force-recreate"
     
     echo ""
-    
-    echo "首次访问可能需要初始化，请稍等1-2分钟后访问上述地址"
-    
 else
     echo "服务启动失败，请检查日志:"
     cd $PROJECT_DIR/docker && docker-compose logs
