@@ -47,7 +47,7 @@ if command -v git &> /dev/null; then
     
         git pull origin main
     else
-        git clone https://github.ygking.top/github.com/tooplick/qqmusic_web.git .
+        git clone --depth=1 https://github.ygking.top/github.com/tooplick/qqmusic_web.git .
     fi
     echo "项目文件下载完成"
 else

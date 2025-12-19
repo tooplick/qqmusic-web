@@ -47,7 +47,7 @@ if command -v git &> /dev/null; then
         git reset --hard origin/main
         git clean -fd
     else
-        git clone https://github.com/tooplick/qqmusic_web.git .
+        git clone --depth=1 https://github.com/tooplick/qqmusic_web.git .
     fi
     echo "项目文件下载完成"
 else
