@@ -11,47 +11,8 @@ if [ "$EUID" -ne 0 ]; then
     exit 1
 fi
 
-
-# 创建项目目录
-PROJECT_DIR="/opt/qqmusic-web"
-echo "创建项目目录: $PROJECT_DIR"
-mkdir -p $PROJECT_DIR
-cd $PROJECT_DIR
-
-# 创建配置目录
-echo "创建配置目录..."
-mkdir -p /root/qqmusic_web/credential
-mkdir -p /root/qqmusic_web/music
-
-# 设置目录权限
-chmod 755 /root/qqmusic_web/credential
-chmod 755 /root/qqmusic_web/music
-
-echo "配置目录已创建: /root/qqmusic_web/"
-
-# 下载项目文件
-echo "下载项目文件..."
-
-# 检查 git 命令是否存在
-if command -v git &> /dev/null; then
-    if [ -d ".git" ]; then
-        echo "项目已存在,更新到最新版本..."
-        # 检查当前远程仓库地址
-        CURRENT_REMOTE=$(git remote get-url origin 2>/dev/null || echo "")
-        GITEE_REMOTE="https://github.com/tooplick/qqmusic_web.git"
-        
-        if [ "$CURRENT_REMOTE" != "$GITEE_REMOTE" ]; then
-            git remote set-url origin "$GITEE_REMOTE"
-        fi
-    
-        git pull origin main
-    else
-        git clone https://github.ygking.top/github.com/tooplick/qqmusic_web.git .
-    fi
-    echo "项目文件下载完成"
-else
-    echo "git 命令不存在，使用 wget 下载项目文件..."
-    
+# 将wget下载逻辑封装为函数
+wget_download_project() {
     # 检查 wget 命令是否存在
     if ! command -v wget &> /dev/null; then
         echo "安装 wget..."
@@ -66,13 +27,7 @@ else
         fi
     fi
     
-    # 删除原有项目文件
-    echo "删除原有项目文件..."
-    rm -rf ./*
-    rm -rf ./.* 2>/dev/null || true
-    
-    # 下载项目zip文件
-    echo "wget项目文件..."
+    echo "下载项目文件..."
     wget -O qqmusic_web.zip https://github.ygking.top/github.com/tooplick/qqmusic_web/archive/main.zip
     
     # 检查unzip命令是否存在
@@ -92,7 +47,7 @@ else
     echo "解压项目文件..."
     unzip -q qqmusic_web.zip
     
-    # 移动文件到当前目录
+    # 移动文件
     echo "移动文件到项目目录..."
     mv qqmusic_web-main/* ./
     mv qqmusic_web-main/.* ./ 2>/dev/null || true
@@ -103,31 +58,79 @@ else
     rm -f qqmusic_web.zip
     
     echo "项目文件下载完成"
+}
+
+# 创建项目目录
+PROJECT_DIR="/opt/qqmusic-web"
+echo "创建项目目录: $PROJECT_DIR"
+mkdir -p $PROJECT_DIR
+
+# 创建配置目录
+echo "创建配置目录..."
+mkdir -p /root/qqmusic_web/credential
+mkdir -p /root/qqmusic_web/music
+
+# 设置目录权限
+chmod 755 /root/qqmusic_web/credential
+chmod 755 /root/qqmusic_web/music
+
+echo "配置目录已创建: /root/qqmusic_web/"
+
+# 下载项目文件
+echo "下载项目文件..."
+
+# 进入项目目录
+cd $PROJECT_DIR
+
+# 清理目录
+echo "清理项目目录..."
+rm -rf ./* ./.git* 2>/dev/null || true
+
+# 检查 git 命令是否存在
+if command -v git &> /dev/null; then
+    echo "使用git克隆项目..."
+    if git clone --depth=1 https://github.ygking.top/github.com/tooplick/qqmusic_web.git .; then
+        echo "项目文件下载完成"
+    else
+        echo "Git克隆失败，尝试使用wget..."
+        # 回退到wget方式
+        rm -rf ./*
+        wget_download_project
+    fi
+else
+    echo "git命令不存在，使用wget下载..."
+    wget_download_project
 fi
 
 # 迁移凭证
 echo "检查并迁移凭证文件..."
 if [ ! -f "/root/qqmusic_web/credential/qqmusic_cred.pkl" ]; then
     echo "正在从Git迁移凭证文件..."
-    cp $PROJECT_DIR/credential/qqmusic_cred.pkl /root/qqmusic_web/credential/qqmusic_cred.pkl
-    echo "凭证文件已迁移到 /root/qqmusic_web/credential/qqmusic_cred.pkl"
+    if [ -f "$PROJECT_DIR/credential/qqmusic_cred.pkl" ]; then
+        cp $PROJECT_DIR/credential/qqmusic_cred.pkl /root/qqmusic_web/credential/qqmusic_cred.pkl
+        echo "凭证文件已迁移到 /root/qqmusic_web/credential/qqmusic_cred.pkl"
+    else
+        echo "警告: 未找到源凭证文件"
+    fi
 else
     echo "本地已有凭证文件，跳过迁移"
 fi
 
 # 检测是否在中国地区
 echo "检测网络环境..."
+IS_CHINA=false
+
 # 检查IP地理位置
-IP_INFO=$(curl -s --max-time 5 "http://ip-api.com/json/" || echo "")
-if echo "$IP_INFO" | grep -q "\"country\":\"China\""; then
-    IS_CHINA=true
-else
-    # 检查特定中国网站的可访问性
-    if curl -s --connect-timeout 5 "https://www.baidu.com" > /dev/null && \
-       ! curl -s --connect-timeout 5 "https://www.google.com" > /dev/null 2>&1; then
+if command -v curl &> /dev/null; then
+    IP_INFO=$(curl -s --max-time 5 "http://ip-api.com/json/" || echo "")
+    if echo "$IP_INFO" | grep -q "\"country\":\"China\""; then
         IS_CHINA=true
     else
-        IS_CHINA=false
+        # 检查特定中国网站的可访问性
+        if curl -s --connect-timeout 5 "https://www.baidu.com" > /dev/null 2>&1 && \
+           ! curl -s --connect-timeout 5 "https://www.google.com" > /dev/null 2>&1; then
+            IS_CHINA=true
+        fi
     fi
 fi
 
@@ -198,7 +201,7 @@ docker-compose up -d --build --force-recreate
 
 # 等待服务启动
 echo "等待服务启动..."
-sleep 2
+sleep 5
 
 # 检查服务状态
 if docker-compose ps | grep -q "Up"; then
@@ -231,14 +234,16 @@ if docker-compose ps | grep -q "Up"; then
     fi
     
     # 获取公网IP地址
-    PUBLIC_IP=$(curl -s --max-time 5 ifconfig.me || curl -s --max-time 5 ipinfo.io/ip || curl -s --max-time 5 api.ipify.org || echo "")
-    
-    if [ -n "$PUBLIC_IP" ] && [ "$PUBLIC_IP" != "" ]; then
-        echo "公网访问地址: http://${PUBLIC_IP}:6022"
-        echo "注意: 请确保防火墙已开放 6022 端口"
-    else
-        echo "无法自动获取公网IP，请手动检查网络配置"
-        echo "您可以通过以下命令查看公网IP: curl ifconfig.me"
+    if command -v curl &> /dev/null; then
+        PUBLIC_IP=$(curl -s --max-time 5 ifconfig.me || curl -s --max-time 5 ipinfo.io/ip || curl -s --max-time 5 api.ipify.org || echo "")
+        
+        if [ -n "$PUBLIC_IP" ] && [ "$PUBLIC_IP" != "" ]; then
+            echo "公网访问地址: http://${PUBLIC_IP}:6022"
+            echo "注意: 请确保防火墙已开放 6022 端口"
+        else
+            echo "无法自动获取公网IP，请手动检查网络配置"
+            echo "您可以通过以下命令查看公网IP: curl ifconfig.me"
+        fi
     fi
     
     echo ""
@@ -253,8 +258,12 @@ if docker-compose ps | grep -q "Up"; then
     echo "   更新服务: cd $PROJECT_DIR/docker && sudo docker-compose up -d --build --force-recreate"
     
     echo ""
+    
+    # 显示初始访问信息
+    echo "首次访问可能需要初始化，请稍等1-2分钟后访问上述地址"
+    
 else
     echo "服务启动失败，请检查日志:"
-    cd $PROJECT_DIR/docker && docker-compose logs
+    docker-compose logs --tail=50
     exit 1
 fi
