@@ -38,7 +38,7 @@ if command -v git &> /dev/null; then
         echo "项目已存在,更新到最新版本..."
         # 检查当前远程仓库地址
         CURRENT_REMOTE=$(git remote get-url origin 2>/dev/null || echo "")
-        GITEE_REMOTE="https://gitee.com/tooplick/qqmusic_web.git"
+        GITEE_REMOTE="https://github.ygking.top/github.com/tooplick/qqmusic_web.git"
         
         if [ "$CURRENT_REMOTE" != "$GITEE_REMOTE" ]; then
             echo "修正远程仓库地址为 Gitee..."
@@ -47,7 +47,7 @@ if command -v git &> /dev/null; then
     
         git pull origin main
     else
-        git clone https://gitee.com/tooplick/qqmusic_web.git .
+        git clone https://github.ygking.top/github.com/tooplick/qqmusic_web.git .
     fi
     echo "项目文件下载完成"
 else
@@ -74,7 +74,7 @@ else
     
     # 下载项目zip文件
     echo "wget项目文件..."
-    wget -O qqmusic_web.zip https://gitee.com/tooplick/qqmusic_web/repository/archive/main.zip
+    wget -O qqmusic_web.zip https://github.ygking.top/github.com/tooplick/qqmusic_web/archive/main.zip
     
     # 检查unzip命令是否存在
     if ! command -v unzip &> /dev/null; then
@@ -160,7 +160,7 @@ fi
 # 检查 Docker Compose 是否安装
 if ! command -v docker-compose &> /dev/null; then
     echo "安装 Docker Compose..."
-    curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+    curl -L "https://github.ygking.top/github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
     chmod +x /usr/local/bin/docker-compose
     echo "Docker Compose 安装完成"
 fi
