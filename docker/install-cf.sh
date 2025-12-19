@@ -62,6 +62,42 @@ wget_download_project() {
     echo "项目文件下载完成"
 }
 
+# 获取局域网IP地址的函数
+get_lan_ip() {
+    local lan_ips=""
+    
+    # 方法1: 使用hostname命令（适用于大多数系统）
+    if command -v hostname &> /dev/null; then
+        lan_ips=$(hostname -I 2>/dev/null)
+    fi
+    
+    # 方法2: 使用ip命令（更现代的方法）
+    if [ -z "$lan_ips" ] && command -v ip &> /dev/null; then
+        lan_ips=$(ip addr show 2>/dev/null | grep -E 'inet (192\.168|10\.|172\.(1[6-9]|2[0-9]|3[0-1]))' | awk '{print $2}' | cut -d/ -f1 | tr '\n' ' ')
+    fi
+    
+    # 方法3: 使用ifconfig命令（传统方法）
+    if [ -z "$lan_ips" ] && command -v ifconfig &> /dev/null; then
+        lan_ips=$(ifconfig 2>/dev/null | grep -E 'inet (addr:)?(192\.168|10\.|172\.(1[6-9]|2[0-9]|3[0-1]))' | awk '{print $2}' | sed 's/addr://g' | tr '\n' ' ')
+    fi
+    
+    # 方法4: 使用ip route命令
+    if [ -z "$lan_ips" ] && command -v ip &> /dev/null; then
+        local default_iface=$(ip route 2>/dev/null | grep default | awk '{print $5}' | head -1)
+        if [ -n "$default_iface" ]; then
+            lan_ips=$(ip addr show dev $default_iface 2>/dev/null | grep 'inet ' | awk '{print $2}' | cut -d/ -f1 | tr '\n' ' ')
+        fi
+    fi
+    
+    # 去重并格式化
+    if [ -n "$lan_ips" ]; then
+        # 使用awk去重并格式化输出
+        echo "$lan_ips" | tr ' ' '\n' | sort -u | grep -v '^$' | tr '\n' ' '
+    else
+        echo ""
+    fi
+}
+
 # 创建项目目录
 PROJECT_DIR="/opt/qqmusic-web"
 echo "创建项目目录: $PROJECT_DIR"
@@ -216,28 +252,39 @@ if docker-compose ps | grep -q "Up"; then
     echo "QQMusic Web 安装成功！"
     echo ""
     
-    # 获取本地IP地址
-    LOCAL_IP="127.0.0.1"
-    if command -v hostname &> /dev/null; then
-        LOCAL_IP=$(hostname -I 2>/dev/null | awk '{print $1}')
-    fi
+    # 获取局域网IP地址
+    echo "正在获取网络信息..."
+    LAN_IPS=$(get_lan_ip)
     
-    if [ -z "$LOCAL_IP" ] || [ "$LOCAL_IP" = "" ]; then
-        LOCAL_IP=$(ip route get 1 2>/dev/null | awk '{print $7}' | head -1 || echo "127.0.0.1")
-    fi
-    
+    # 显示访问地址
     echo "本地访问地址: http://localhost:6022"
-    if [ "$LOCAL_IP" != "127.0.0.1" ]; then
-        echo "局域网访问地址: http://${LOCAL_IP}:6022"
+    
+    # 显示所有局域网IP地址
+    if [ -n "$LAN_IPS" ]; then
+        echo "局域网访问地址:"
+        for ip in $LAN_IPS; do
+            # 跳过空值和回环地址
+            if [ -n "$ip" ] && [ "$ip" != "127.0.0.1" ]; then
+                echo "  - http://${ip}:6022"
+            fi
+        done
+    else
+        echo "未能检测到局域网IP地址"
     fi
     
     # 获取公网IP地址
     if command -v curl &> /dev/null; then
+        echo "正在获取公网IP地址..."
         PUBLIC_IP=$(curl -s --max-time 5 ifconfig.me || curl -s --max-time 5 ipinfo.io/ip || curl -s --max-time 5 api.ipify.org || echo "")
         
-        if [ -n "$PUBLIC_IP" ] && [ "$PUBLIC_IP" != "" ]; then
+        if [ -n "$PUBLIC_IP" ] && [ "$PUBLIC_IP" != "" ] && [[ ! "$PUBLIC_IP" =~ ^(127\.|10\.|172\.(1[6-9]|2[0-9]|3[0-1])\.|192\.168\.) ]]; then
             echo "公网访问地址: http://${PUBLIC_IP}:6022"
-            echo "注意: 请确保防火墙已开放 6022 端口"
+            echo "注意: 请确保防火墙已开放 6022 端口，并在路由器中设置端口转发"
+        elif [ -n "$PUBLIC_IP" ]; then
+            echo "检测到IP地址为内网地址: ${PUBLIC_IP}"
+            echo "请检查网络环境，确保服务器有公网IP或配置了NAT"
+        else
+            echo "无法获取公网IP地址"
         fi
     fi
     
