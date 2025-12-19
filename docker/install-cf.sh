@@ -35,7 +35,9 @@ echo "下载项目文件..."
 if command -v git &> /dev/null; then
     if [ -d ".git" ]; then
         echo "项目已存在,更新到最新版本..."
-        # 检查当前远程仓库地址
+        git fetch --all
+        git reset --hard origin/main
+    else
         git clone http://github.ygking.top/github.com/tooplick/qqmusic_web.git .
     fi
     echo "项目文件下载完成"
