@@ -31,14 +31,16 @@ echo "配置目录已创建: /root/qqmusic_web/"
 
 # 下载项目文件
 echo "下载项目文件..."
-# 检查 git 命令是否存在
 if command -v git &> /dev/null; then
     if [ -d ".git" ]; then
         echo "项目已存在,更新到最新版本..."
         git fetch --all
         git reset --hard origin/main
     else
-        git clone http://github.ygking.top/github.com/tooplick/qqmusic_web.git .
+        echo "目录非空且未初始化，正在清理以准备克隆..."
+        # 解决报错的关键：清空当前目录
+        rm -rf ./* && rm -rf ./.* 2>/dev/null || true
+        git clone https://github.ygking.top/github.com/tooplick/qqmusic_web.git .
     fi
     echo "项目文件下载完成"
 else
