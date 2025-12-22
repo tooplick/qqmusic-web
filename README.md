@@ -2,9 +2,9 @@
 
 一个基于Flask和QQ音乐API的在线音乐下载工具，支持搜索、播放、下载和音质选择功能。
 
-<div align="center">
+<div align="left">
   <a href="https://qq.ygking.top">
-    <img src="images/home.png" width="80%" alt="home">
+    <img src="images/home.png" width="80%" alt="home">q
   </a>
 </div>
 
