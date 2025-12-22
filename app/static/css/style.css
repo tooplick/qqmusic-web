@@ -91,6 +91,108 @@ body {
     background: rgba(0, 0, 0, 0.1);
 }
 
+.top-bar-actions {
+    display: flex;
+    gap: 8px;
+}
+
+/* 播放列表抽屉特定样式 */
+.playlist-drawer .drawer-header {
+    justify-content: flex-start;
+}
+
+.playlist-drawer .drawer-header h2 {
+    flex: 1;
+}
+
+.clear-playlist-btn {
+    border: none;
+    background: none;
+    color: var(--text-secondary);
+    font-size: 16px;
+    padding: 8px;
+    cursor: pointer;
+    transition: color 0.2s;
+}
+
+.clear-playlist-btn:hover {
+    color: #FF3B30;
+}
+
+.playlist-list {
+    flex: 1;
+    overflow-y: auto;
+}
+
+.playlist-item {
+    display: flex;
+    align-items: center;
+    padding: 12px;
+    border-radius: 10px;
+    margin-bottom: 8px;
+    transition: background 0.2s;
+    cursor: pointer;
+}
+
+.playlist-item:hover {
+    background: rgba(0, 0, 0, 0.05);
+}
+
+.playlist-item.playing {
+    background: rgba(0, 0, 0, 0.08);
+}
+
+.playlist-item .item-cover {
+    width: 45px;
+    height: 45px;
+    border-radius: 6px;
+    margin-right: 12px;
+    object-fit: cover;
+}
+
+.playlist-item .item-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.playlist-item .item-title {
+    font-size: 14px;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.playlist-item .item-artist {
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+.playlist-item .remove-btn {
+    border: none;
+    background: none;
+    color: var(--text-tertiary);
+    font-size: 14px;
+    padding: 8px;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.2s, color 0.2s;
+}
+
+.playlist-item:hover .remove-btn {
+    opacity: 1;
+}
+
+.playlist-item .remove-btn:hover {
+    color: #FF3B30;
+}
+
+/* 搜索结果中的"添加到播放列表"按钮 */
+.action-btn.add-next {
+    background: rgba(52, 199, 89, 0.1);
+    color: #34C759;
+}
+
 /* 主内容区 - 居中布局 */
 .main-view {
     flex: 1;

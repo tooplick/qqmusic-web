@@ -22,9 +22,14 @@
                 <i class="fas fa-music"></i>
                 <span>Music</span>
             </div>
-            <button class="search-btn" id="search-btn">
-                <i class="fas fa-search"></i>
-            </button>
+            <div class="top-bar-actions">
+                <button class="search-btn" id="playlist-btn" title="播放列表">
+                    <i class="fas fa-list"></i>
+                </button>
+                <button class="search-btn" id="search-btn" title="搜索">
+                    <i class="fas fa-search"></i>
+                </button>
+            </div>
         </div>
 
         <!-- 主内容区 - 居中布局 -->
@@ -124,6 +129,29 @@
                     <button class="page-btn" id="prev-page"><i class="fas fa-chevron-left"></i></button>
                     <span id="page-info">1 / 1</span>
                     <button class="page-btn" id="next-page"><i class="fas fa-chevron-right"></i></button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 播放列表抽屉 -->
+    <div class="search-drawer playlist-drawer" id="playlist-drawer">
+        <div class="drawer-header">
+            <button class="close-drawer" id="close-playlist">
+                <i class="fas fa-arrow-left"></i>
+            </button>
+            <h2>播放列表</h2>
+            <button class="clear-playlist-btn" id="clear-playlist" title="清空列表">
+                <i class="fas fa-trash"></i>
+            </button>
+        </div>
+
+        <div class="drawer-content">
+            <div class="playlist-list" id="playlist-list">
+                <div class="empty-state">
+                    <i class="fas fa-music"></i>
+                    <p>播放列表为空</p>
+                    <p style="font-size: 12px; opacity: 0.6;">搜索歌曲并点击"+"添加</p>
                 </div>
             </div>
         </div>

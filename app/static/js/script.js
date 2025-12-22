@@ -62,7 +62,11 @@ class UI {
             pagination: DOM.get('pagination'),
             pageInfo: DOM.get('page-info'),
             prevPage: DOM.get('prev-page'),
-            nextPage: DOM.get('next-page')
+            nextPage: DOM.get('next-page'),
+
+            // Playlist Drawer
+            playlistDrawer: DOM.get('playlist-drawer'),
+            playlistList: DOM.get('playlist-list')
         };
         this.currentLyrics = [];
         this.userScrolling = false;
@@ -119,6 +123,71 @@ class UI {
     toggleView() {
         this.els.coverView.classList.toggle('active');
         this.els.lyricsView.classList.toggle('active');
+    }
+
+    // Playlist Drawer Control
+    openPlaylistDrawer() {
+        this.els.playlistDrawer.classList.add('open');
+        this.els.drawerOverlay.classList.add('show');
+        document.body.style.overflow = 'hidden';
+    }
+
+    closePlaylistDrawer() {
+        this.els.playlistDrawer.classList.remove('open');
+        this.els.drawerOverlay.classList.remove('show');
+        document.body.style.overflow = '';
+    }
+
+    // 渲染播放列表
+    renderPlaylist(queue, currentIndex) {
+        if (!this.els.playlistList) return;
+
+        if (queue.length === 0) {
+            this.els.playlistList.innerHTML = `
+                <div class="empty-state">
+                    <i class="fas fa-music"></i>
+                    <p>播放列表为空</p>
+                    <p style="font-size: 12px; opacity: 0.6;">搜索歌曲并点击"+"添加</p>
+                </div>
+            `;
+            return;
+        }
+
+        this.els.playlistList.innerHTML = '';
+        queue.forEach((song, i) => {
+            let cover = 'https://y.gtimg.cn/music/photo_new/T002R300x300M000003y8dsH2wBHlo_1.jpg';
+            if (song.album_mid) {
+                cover = `https://y.gtimg.cn/music/photo_new/T002R300x300M000${song.album_mid}.jpg`;
+            }
+
+            const div = DOM.create('div', `playlist-item ${i === currentIndex ? 'playing' : ''}`);
+            div.innerHTML = `
+                <img src="${cover}" class="item-cover" loading="lazy">
+                <div class="item-info">
+                    <div class="item-title">${song.name}</div>
+                    <div class="item-artist">${song.singers}</div>
+                </div>
+                <button class="remove-btn" data-idx="${i}"><i class="fas fa-times"></i></button>
+            `;
+
+            // 点击播放
+            div.addEventListener('click', (e) => {
+                if (!e.target.closest('.remove-btn')) {
+                    window.player.playFromQueue(i);
+                }
+            });
+
+            this.els.playlistList.appendChild(div);
+        });
+
+        // 绑定移除按钮
+        this.els.playlistList.querySelectorAll('.remove-btn').forEach(btn => {
+            btn.onclick = (e) => {
+                e.stopPropagation();
+                const idx = parseInt(btn.dataset.idx);
+                window.player.removeFromQueue(idx);
+            };
+        });
     }
 
     updateSongInfo(song) {
@@ -301,7 +370,8 @@ class Player {
     constructor(ui) {
         this.ui = ui;
         this.audio = new Audio();
-        this.playlist = [];
+        this.playlist = [];  // 搜索结果（临时）
+        this.queue = [];     // 播放队列（持久）
         this.currentIndex = -1;
         this.volume = 1.0;
         this._initAudio();
@@ -398,19 +468,105 @@ class Player {
     }
 
     prev() {
-        if (!this.playlist.length) return;
-        const idx = (this.currentIndex - 1 + this.playlist.length) % this.playlist.length;
-        this.play(idx);
+        if (!this.queue.length) return;
+        const idx = (this.currentIndex - 1 + this.queue.length) % this.queue.length;
+        this.playFromQueue(idx);
     }
 
     next() {
-        if (!this.playlist.length) return;
-        const idx = (this.currentIndex + 1) % this.playlist.length;
-        this.play(idx);
+        if (!this.queue.length) return;
+        const idx = (this.currentIndex + 1) % this.queue.length;
+        this.playFromQueue(idx);
     }
 
     seek(time) {
         if (this.audio.duration) this.audio.currentTime = time;
+    }
+
+    // --- 播放队列管理 ---
+
+    // 添加到队列末尾
+    addToQueue(song) {
+        this.queue.push(song);
+        this.ui.renderPlaylist(this.queue, this.currentIndex);
+        this.ui.notify(`已添加到队列: ${song.name}`);
+    }
+
+    // 添加为下一首播放
+    addNext(song) {
+        // 插入到当前播放位置的下一个
+        const insertPos = this.currentIndex + 1;
+        this.queue.splice(insertPos, 0, song);
+        this.ui.renderPlaylist(this.queue, this.currentIndex);
+        this.ui.notify(`下一首播放: ${song.name}`);
+    }
+
+    // 从队列移除
+    removeFromQueue(index) {
+        if (index < 0 || index >= this.queue.length) return;
+
+        // 如果移除的是当前播放的歌曲之前的，需要调整currentIndex
+        if (index < this.currentIndex) {
+            this.currentIndex--;
+        } else if (index === this.currentIndex) {
+            // 如果移除当前播放的歌曲，停止播放
+            this.audio.pause();
+            this.currentIndex = -1;
+        }
+
+        this.queue.splice(index, 1);
+        this.ui.renderPlaylist(this.queue, this.currentIndex);
+    }
+
+    // 清空队列
+    clearQueue() {
+        this.queue = [];
+        this.currentIndex = -1;
+        this.audio.pause();
+        this.ui.renderPlaylist(this.queue, this.currentIndex);
+        this.ui.notify('播放列表已清空');
+    }
+
+    // 从队列播放指定索引
+    playFromQueue(index) {
+        if (index < 0 || index >= this.queue.length) return;
+        this.currentIndex = index;
+        const song = this.queue[index];
+
+        // 立即停止当前播放
+        this.audio.pause();
+        this.audio.currentTime = 0;
+        this._stopTimer();
+
+        this.ui.updateSongInfo(song);
+        this.ui.renderPlaylist(this.queue, this.currentIndex);
+
+        // 获取歌词
+        fetch(`/api/lyric/${song.mid}`)
+            .then(r => r.json())
+            .then(d => this.ui.renderLyrics(d))
+            .catch(() => this.ui.renderLyrics(null));
+
+        // 获取播放链接
+        const quality = document.querySelector('input[name="quality"]:checked').value;
+        const preferFlac = (quality === 'flac');
+
+        fetch('/api/play_url', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ song_data: song, prefer_flac: preferFlac })
+        })
+            .then(res => res.json())
+            .then(data => {
+                if (data.error) throw new Error(data.error);
+                this.audio.src = data.url;
+                this.audio.volume = this.volume;
+                this.audio.play();
+                this.ui.notify(`正在播放: ${song.name} (${data.quality})`);
+            })
+            .catch(e => {
+                this.ui.notify(`播放失败: ${e.message}`, 'error');
+            });
     }
 
     setVolume(vol) {
@@ -461,7 +617,17 @@ class App {
         // Drawer
         DOM.get('search-btn').onclick = () => this.ui.openDrawer();
         DOM.get('close-drawer').onclick = () => this.ui.closeDrawer();
-        this.ui.els.drawerOverlay.onclick = () => this.ui.closeDrawer();
+
+        // Playlist Drawer
+        DOM.get('playlist-btn').onclick = () => this.ui.openPlaylistDrawer();
+        DOM.get('close-playlist').onclick = () => this.ui.closePlaylistDrawer();
+        DOM.get('clear-playlist').onclick = () => this.player.clearQueue();
+
+        // Overlay closes any open drawer
+        this.ui.els.drawerOverlay.onclick = () => {
+            this.ui.closeDrawer();
+            this.ui.closePlaylistDrawer();
+        };
 
         // Search
         const searchInput = DOM.get('search-input');
@@ -488,8 +654,18 @@ class App {
             const btn = e.target.closest('button');
             if (!btn) return;
             const idx = parseInt(btn.dataset.idx);
-            if (btn.classList.contains('play')) this.player.play(idx);
-            else if (btn.classList.contains('download')) this.download(idx);
+            const song = this.player.playlist[idx];
+
+            if (btn.classList.contains('play')) {
+                // 点击播放：添加到队列并立即播放
+                this.player.addToQueue(song);
+                this.player.playFromQueue(this.player.queue.length - 1);
+            } else if (btn.classList.contains('add-next')) {
+                // 添加为下一首
+                this.player.addNext(song);
+            } else if (btn.classList.contains('download')) {
+                this.download(idx);
+            }
         };
     }
 
@@ -527,8 +703,9 @@ class App {
                             <div class="item-artist">${s.singers}</div>
                         </div>
                         <div class="item-actions">
-                            <button class="action-btn play" data-idx="${i}"><i class="fas fa-play"></i></button>
-                            <button class="action-btn download" data-idx="${i}"><i class="fas fa-download"></i></button>
+                            <button class="action-btn play" data-idx="${i}" title="播放"><i class="fas fa-play"></i></button>
+                            <button class="action-btn add-next" data-idx="${i}" title="下一首播放"><i class="fas fa-plus"></i></button>
+                            <button class="action-btn download" data-idx="${i}" title="下载"><i class="fas fa-download"></i></button>
                         </div>
                     `;
                     this.ui.els.resultsList.appendChild(div);
