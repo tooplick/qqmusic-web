@@ -134,6 +134,57 @@ class UI {
 
         this.els.albumCover.src = cover;
         this.els.bgLayer.style.backgroundImage = `url('${cover}')`;
+
+        // 提取封面主色调并应用到控制栏
+        this._extractCoverColor(cover);
+    }
+
+    _extractCoverColor(coverUrl) {
+        const img = new Image();
+        img.crossOrigin = 'Anonymous';
+        img.onload = () => {
+            try {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                canvas.width = 100;
+                canvas.height = 100;
+                ctx.drawImage(img, 0, 0, 100, 100);
+
+                // 从中心区域采样，获取更具代表性的颜色
+                const centerData = ctx.getImageData(25, 25, 50, 50).data;
+
+                let r = 0, g = 0, b = 0, count = 0;
+                for (let i = 0; i < centerData.length; i += 4) {
+                    r += centerData[i];
+                    g += centerData[i + 1];
+                    b += centerData[i + 2];
+                    count++;
+                }
+                r = Math.round(r / count);
+                g = Math.round(g / count);
+                b = Math.round(b / count);
+
+                // 增强饱和度使颜色更鲜明
+                const max = Math.max(r, g, b);
+                const min = Math.min(r, g, b);
+                const delta = max - min;
+                if (delta > 20) { // 有一定饱和度时才增强
+                    const factor = 1.3;
+                    r = Math.min(255, Math.round(128 + (r - 128) * factor));
+                    g = Math.min(255, Math.round(128 + (g - 128) * factor));
+                    b = Math.min(255, Math.round(128 + (b - 128) * factor));
+                }
+
+                // 设置控制栏背景色（降低透明度使颜色更明显）
+                document.documentElement.style.setProperty(
+                    '--controls-bg',
+                    `rgba(${r}, ${g}, ${b}, 0.75)`
+                );
+            } catch (e) {
+                console.log('Color extraction failed:', e);
+            }
+        };
+        img.src = coverUrl;
     }
 
     updateProgress(curr, total) {
@@ -151,11 +202,33 @@ class UI {
             if (!text) return [];
             const lines = text.split('\n');
             const res = [];
+
+            // 1. 查找全局 offset (格式 [offset:1000] 单位毫秒)
+            let globalOffset = 0;
+            const offsetMatch = text.match(/\[offset:\s*(-?\d+)\]/);
+            if (offsetMatch) {
+                globalOffset = parseInt(offsetMatch[1]) / 1000; // 转换为秒
+            }
+
             const re = /\[(\d+):(\d+)\.(\d+)\]/;
             lines.forEach(l => {
                 const m = l.match(re);
                 if (m) {
-                    const t = parseInt(m[1]) * 60 + parseInt(m[2]) + parseInt(m[3]) / 100;
+                    // 兼容2位(.xx)和3位(.xxx)毫秒
+                    // m[1]: 分, m[2]: 秒, m[3]: 毫秒部分
+                    const min = parseInt(m[1]);
+                    const sec = parseInt(m[2]);
+                    const msStr = m[3];
+                    // 如果毫秒部分是2位，除以100；如果是3位，除以1000
+                    const ms = parseInt(msStr) / Math.pow(10, msStr.length);
+
+                    // 应用 offset (注意：LRC offset 正值通常表示歌词提前，负值延迟，但不同播放器定义可能不同
+                    // 这里采用标准定义：Time = TagTime + Offset? 实际上通常是 TagTime - Offset
+                    // 暂且认为 offset 是修正值，直接加在时间戳上
+                    // 大多数播放器逻辑：timestamp = parseTime + offset / 1000
+                    let t = min * 60 + sec + ms + globalOffset;
+                    if (t < 0) t = 0;
+
                     const txt = l.replace(re, '').trim();
                     if (txt) res.push({ t, txt });
                 }
@@ -181,24 +254,44 @@ class UI {
 
     highlightLyric(time) {
         if (!this.currentLyrics.length) return;
-        // 如果用户正在滚动，不自动定位
-        if (this.userScrolling) return;
+        // 移除 userScrolling 检查，因为 scrollTo 会触发 scroll 事件，导致自我阻塞
 
         let idx = -1;
+        // 找到最后一句 <= time 的歌词
         for (let i = 0; i < this.currentLyrics.length; i++) {
             if (time >= this.currentLyrics[i].t) idx = i;
             else break;
         }
 
+        // 保持 idx 有效
         if (idx !== -1 && idx !== this.lastHighlightIdx) {
             this.lastHighlightIdx = idx;
+
+            // 切换 active 类
+            const rows = this.els.lyricsScroll.children;
             const active = this.els.lyricsScroll.querySelector('.active');
             if (active) active.classList.remove('active');
 
-            const curr = this.els.lyricsScroll.children[idx];
+            const curr = rows[idx];
             if (curr && !curr.classList.contains('empty-state')) {
                 curr.classList.add('active');
-                curr.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+                // --- 优化滚动逻辑 ---
+                // 参考用户代码，使用 scrollTo + smooth behavior
+                if (this.els.lyricsScroll) {
+                    const containerHeight = this.els.lyricsScroll.clientHeight;
+                    // const rowTop = curr.offsetTop; // offsetTop 是相对于 offsetParent 的
+                    // 最好结合 scrollTop 计算相对位置，或者确保 offsetParent 正确
+                    // 简单起见，计算 targetScroll
+
+                    const lineHeight = curr.offsetHeight;
+                    const targetScroll = curr.offsetTop - containerHeight / 2 + lineHeight / 2;
+
+                    this.els.lyricsScroll.scrollTo({
+                        top: targetScroll,
+                        behavior: 'smooth'
+                    });
+                }
             }
         }
     }
@@ -215,21 +308,49 @@ class Player {
     }
 
     _initAudio() {
-        this.audio.ontimeupdate = () => {
-            this.ui.updateProgress(this.audio.currentTime, this.audio.duration);
-            this.ui.highlightLyric(this.audio.currentTime);
-        };
+
         this.audio.onended = () => this.next();
-        this.audio.onplay = () => this.ui.setPlaying(true);
-        this.audio.onpause = () => this.ui.setPlaying(false);
+        this.audio.onplay = () => {
+            this.ui.setPlaying(true);
+            this._startTimer();
+        };
+        this.audio.onpause = () => {
+            this.ui.setPlaying(false);
+            this._stopTimer();
+        };
         this.audio.onerror = () => {
             this.ui.notify('音频播放出错', 'error');
             this.ui.setPlaying(false);
+            this._stopTimer();
         };
+    }
+
+    _startTimer() {
+        this._stopTimer();
+        // 参考用户提供的有效代码，使用 100ms 间隔的 setInterval
+        // 这样可以避免 rAF 对 DOM 的过度高频操作，同时保持足够的精度
+        this.timerId = setInterval(() => {
+            if (this.audio.paused) return;
+            this.ui.updateProgress(this.audio.currentTime, this.audio.duration);
+            this.ui.highlightLyric(this.audio.currentTime);
+        }, 100);
+    }
+
+    _stopTimer() {
+        if (this.timerId) {
+            clearInterval(this.timerId);
+            this.timerId = null;
+        }
     }
 
     async play(index) {
         if (index < 0 || index >= this.playlist.length) return;
+
+        // 立即停止当前播放，避免切换延迟
+        this.audio.pause();
+        this.audio.currentTime = 0;
+        this._stopTimer();
+
         this.currentIndex = index;
         const song = this.playlist[index];
         this.ui.updateSongInfo(song);

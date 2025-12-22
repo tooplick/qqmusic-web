@@ -198,8 +198,9 @@ body {
     flex-direction: column;
     align-items: center;
     padding: 20px;
-    mask-image: linear-gradient(to bottom, transparent, black 10%, black 90%, transparent);
-    -webkit-mask-image: linear-gradient(to bottom, transparent, black 10%, black 90%, transparent);
+    /* 歌词顶部和底部渐隐效果 */
+    mask-image: linear-gradient(to bottom, transparent, black 15%, black 85%, transparent);
+    -webkit-mask-image: linear-gradient(to bottom, transparent, black 15%, black 85%, transparent);
     scrollbar-width: none;
 }
 
@@ -225,19 +226,21 @@ body {
     font-weight: 600;
     color: var(--text-secondary);
     margin: 20px 0;
-    transition: all 0.4s ease;
+    /* 平滑过渡动画，0.2s 适中速度 */
+    transition: all 0.2s ease-out;
     filter: blur(1px);
-    opacity: 0.5;
-    transform: scale(0.95);
+    opacity: 0.6;
+    transform: scale(0.98);
     cursor: pointer;
 }
 
 .lrc-line.active {
     filter: blur(0);
     opacity: 1;
-    transform: scale(1);
+    transform: scale(1.05);
     color: var(--text-primary);
     font-size: 24px;
+    transition: all 0.2s ease-out;
 }
 
 .empty-state {
@@ -260,7 +263,7 @@ body {
     bottom: 0;
     left: 0;
     right: 0;
-    background: rgba(255, 255, 255, 0.95);
+    background: var(--controls-bg, rgba(255, 255, 255, 0.95));
     backdrop-filter: blur(30px);
     -webkit-backdrop-filter: blur(30px);
     border-top: 1px solid var(--divider);
@@ -652,7 +655,7 @@ body {
 }
 
 .toast.success {
-    color: #34C759;
+    color: #333;
 }
 
 .toast.error {
