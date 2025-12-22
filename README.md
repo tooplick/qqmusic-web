@@ -12,16 +12,16 @@
 
 ### Docker 一键部署(推荐)
 ```
-# (Github)
+#（Github）
 sudo -E bash -c "$(curl -fsSL https://raw.githubusercontent.com/tooplick/qqmusic_web/refs/heads/main/docker/install.sh)"
 ```
-
-**如果从 Github 下载脚本遇到网络问题，可以使用 cloudflare 反向代理**
-```
-# (cloudflare)
-sudo -E bash -c "$(curl -fsSL https://github.ygking.top/raw.githubusercontent.com/tooplick/qqmusic_web/refs/heads/main/docker/install-cf.sh)"
+**如果从 Github 下载脚本遇到网络问题，可以使用Gitee仓库**
 ```
 
+#（Gitee）
+sudo -E bash -c "$(curl -fsSL https://gitee.com/tooplick/qqmusic_web/raw/main/docker/giteeinstall.sh)"
+```
+**Gitee仓库版本更新可能不及时，请谅解！**
 ### Python 3.10+
 
 1. **克隆项目**

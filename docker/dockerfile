@@ -21,4 +21,5 @@ COPY . .
 EXPOSE 6022
 
 # 启动应用
-CMD ["python", "run.py"]
+# 启动应用
+CMD ["gunicorn", "-c", "gunicorn.conf.py", "wsgi:app"]

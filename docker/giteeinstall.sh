@@ -31,23 +31,23 @@ echo "配置目录已创建: /root/qqmusic_web/"
 
 # 下载项目文件
 echo "下载项目文件..."
+
 # 检查 git 命令是否存在
 if command -v git &> /dev/null; then
     if [ -d ".git" ]; then
         echo "项目已存在,更新到最新版本..."
         # 检查当前远程仓库地址
         CURRENT_REMOTE=$(git remote get-url origin 2>/dev/null || echo "")
-        GITEE_REMOTE="https://github.com/tooplick/qqmusic_web.git"
+        GITEE_REMOTE="https://gitee.com/tooplick/qqmusic_web.git"
         
         if [ "$CURRENT_REMOTE" != "$GITEE_REMOTE" ]; then
-            echo "修正远程仓库地址为 GitHub..."
+            echo "修正远程仓库地址为 Gitee..."
             git remote set-url origin "$GITEE_REMOTE"
         fi
-        git fetch origin
-        git reset --hard origin/main
-        git clean -fd
+    
+        git pull origin main
     else
-        git clone https://github.com/tooplick/qqmusic_web.git .
+        git clone https://gitee.com/tooplick/qqmusic_web.git .
     fi
     echo "项目文件下载完成"
 else
@@ -74,7 +74,7 @@ else
     
     # 下载项目zip文件
     echo "wget项目文件..."
-    wget -O qqmusic_web.zip https://github.com/tooplick/qqmusic_web/archive/main.zip
+    wget -O qqmusic_web.zip https://gitee.com/tooplick/qqmusic_web/repository/archive/main.zip
     
     # 检查unzip命令是否存在
     if ! command -v unzip &> /dev/null; then
@@ -133,7 +133,7 @@ else
 fi
 
 if [ "$IS_CHINA" = true ]; then
-    echo "检测到中国大陆网络环境，修改 Dockerfile 使用国内镜像源"
+    echo "检测到中国地区网络环境，修改 Dockerfile 使用国内镜像源"
     
     # 备份原始 Dockerfile
     if [ -f "docker/dockerfile" ]; then
