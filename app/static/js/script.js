@@ -153,22 +153,41 @@ class UI {
             return;
         }
 
+        const defaultCover = 'https://y.gtimg.cn/music/photo_new/T002R300x300M000003y8dsH2wBHlo_1.jpg';
         this.els.playlistList.innerHTML = '';
+
         queue.forEach((song, i) => {
-            let cover = 'https://y.gtimg.cn/music/photo_new/T002R300x300M000003y8dsH2wBHlo_1.jpg';
+            let cover = defaultCover;
             if (song.album_mid) {
                 cover = `https://y.gtimg.cn/music/photo_new/T002R300x300M000${song.album_mid}.jpg`;
             }
 
             const div = DOM.create('div', `playlist-item ${i === currentIndex ? 'playing' : ''}`);
             div.innerHTML = `
-                <img src="${cover}" class="item-cover" loading="lazy">
+                <img src="${cover}" class="item-cover" loading="lazy" data-song-idx="${i}">
                 <div class="item-info">
                     <div class="item-title">${song.name}</div>
                     <div class="item-artist">${song.singers}</div>
                 </div>
                 <button class="remove-btn" data-idx="${i}"><i class="fas fa-times"></i></button>
             `;
+
+            // 如果没有 album_mid，异步加载封面
+            if (!song.album_mid) {
+                fetch('/api/cover', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ song_data: song, size: 300 })
+                })
+                    .then(r => r.json())
+                    .then(data => {
+                        if (data.cover_url && data.source !== 'default') {
+                            const img = div.querySelector('.item-cover');
+                            if (img) img.src = data.cover_url;
+                        }
+                    })
+                    .catch(() => { });
+            }
 
             // 点击播放
             div.addEventListener('click', (e) => {
@@ -196,16 +215,36 @@ class UI {
         if (this.els.titleMini) this.els.titleMini.textContent = song.name;
         if (this.els.artistMini) this.els.artistMini.textContent = song.singers;
 
-        let cover = 'https://y.gtimg.cn/music/photo_new/T002R800x800M000003y8dsH2wBHlo_1.jpg';
+        const defaultCover = 'https://y.gtimg.cn/music/photo_new/T002R800x800M000003y8dsH2wBHlo_1.jpg';
+
+        // 设置封面的辅助函数
+        const setCover = (url) => {
+            this.els.albumCover.src = url;
+            this.els.bgLayer.style.backgroundImage = `url('${url}')`;
+            this._extractCoverColor(url);
+        };
+
+        // 如果有 album_mid，先尝试直接使用
         if (song.album_mid) {
-            cover = `https://y.gtimg.cn/music/photo_new/T002R800x800M000${song.album_mid}.jpg`;
+            const albumCover = `https://y.gtimg.cn/music/photo_new/T002R800x800M000${song.album_mid}.jpg`;
+            setCover(albumCover);
+        } else {
+            // 没有 album_mid，调用智能封面 API
+            setCover(defaultCover); // 先显示默认封面
+
+            fetch('/api/cover', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ song_data: song, size: 800 })
+            })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.cover_url && data.source !== 'default') {
+                        setCover(data.cover_url);
+                    }
+                })
+                .catch(() => { /* 使用默认封面 */ });
         }
-
-        this.els.albumCover.src = cover;
-        this.els.bgLayer.style.backgroundImage = `url('${cover}')`;
-
-        // 提取封面主色调并应用到控制栏
-        this._extractCoverColor(cover);
     }
 
     _extractCoverColor(coverUrl) {
@@ -691,13 +730,14 @@ class App {
             if (!data.results || data.results.length === 0) {
                 this.ui.els.resultsList.innerHTML = `<div class="empty-state"><p>未找到结果</p></div>`;
             } else {
+                const defaultCover = 'https://y.gtimg.cn/music/photo_new/T002R300x300M000003y8dsH2wBHlo_1.jpg';
                 data.results.forEach((s, i) => {
                     const div = DOM.create('div', 'result-item');
-                    let cover = 'https://y.gtimg.cn/music/photo_new/T002R300x300M000003y8dsH2wBHlo_1.jpg';
+                    let cover = defaultCover;
                     if (s.album_mid) cover = `https://y.gtimg.cn/music/photo_new/T002R300x300M000${s.album_mid}.jpg`;
 
                     div.innerHTML = `
-                        <img src="${cover}" class="item-cover" loading="lazy">
+                        <img src="${cover}" class="item-cover" loading="lazy" data-song-idx="${i}">
                         <div class="item-info">
                             <div class="item-title">${s.name}</div>
                             <div class="item-artist">${s.singers}</div>
@@ -708,6 +748,24 @@ class App {
                             <button class="action-btn download" data-idx="${i}" title="下载"><i class="fas fa-download"></i></button>
                         </div>
                     `;
+
+                    // 如果没有 album_mid，异步加载封面
+                    if (!s.album_mid) {
+                        fetch('/api/cover', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ song_data: s, size: 300 })
+                        })
+                            .then(r => r.json())
+                            .then(coverData => {
+                                if (coverData.cover_url && coverData.source !== 'default') {
+                                    const img = div.querySelector('.item-cover');
+                                    if (img) img.src = coverData.cover_url;
+                                }
+                            })
+                            .catch(() => { });
+                    }
+
                     this.ui.els.resultsList.appendChild(div);
                 });
             }

@@ -258,3 +258,58 @@ def api_lyric(song_mid):
     except Exception as e:
         logger.error(f"获取歌词失败: {e}")
         return jsonify({'error': f'获取歌词失败: {str(e)}'}), 500
+
+
+def get_cover_manager():
+    """获取封面管理器实例"""
+    from flask import current_app
+    return current_app.config['cover_manager']
+
+
+@bp.route('/cover', methods=['POST'])
+def api_cover():
+    """获取有效封面URL API
+    
+    按优先级尝试:
+    1. 专辑MID封面
+    2. VS值封面
+    """
+    data = request.get_json(silent=True) or {}
+    song_data = data.get('song_data')
+    size = data.get('size', 800)
+    
+    if not song_data:
+        return jsonify({'error': '缺少歌曲数据'}), 400
+    
+    # 确保size是有效值
+    if size not in [150, 300, 500, 800]:
+        size = 800
+    
+    try:
+        cover_manager = get_cover_manager()
+        
+        # 获取原始的 raw_data
+        raw_data = song_data.get('raw_data', song_data)
+        
+        # 使用智能封面获取逻辑
+        cover_url = run_async(cover_manager.get_valid_cover_url(raw_data, size))
+        
+        if cover_url:
+            return jsonify({
+                'cover_url': cover_url,
+                'source': 'smart'
+            })
+        else:
+            # 返回默认封面
+            return jsonify({
+                'cover_url': 'https://y.gtimg.cn/music/photo_new/T002R800x800M000003y8dsH2wBHlo_1.jpg',
+                'source': 'default'
+            })
+            
+    except Exception as e:
+        logger.error(f"获取封面失败: {e}")
+        return jsonify({
+            'cover_url': 'https://y.gtimg.cn/music/photo_new/T002R800x800M000003y8dsH2wBHlo_1.jpg',
+            'source': 'default',
+            'error': str(e)
+        })
