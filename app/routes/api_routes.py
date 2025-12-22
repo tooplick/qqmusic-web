@@ -1,9 +1,11 @@
 from flask import Blueprint, request, jsonify
+from functools import lru_cache
 from datetime import datetime
 from pathlib import Path
 from qqmusic_api import search
 from qqmusic_api.song import get_song_urls, SongFileType
 from qqmusic_api.lyric import get_lyric
+from qqmusic_api.login import check_expired
 import logging
 from ..utils.thread_utils import run_async  # 修复这里：run_utils -> run_async
 
@@ -194,18 +196,10 @@ def api_download():
                 'error': '这首歌是VIP歌曲，需要登录才能下载高音质版本'
             }), 403
 
+
         # 创建SongInfo对象
         from ..models import SongInfo
-        song_info = SongInfo(
-            mid=song_data.get('mid', ''),
-            name=song_data.get('name', ''),
-            singers=song_data.get('singers', ''),
-            vip=song_data.get('vip', False),
-            album=song_data.get('album', ''),
-            album_mid=song_data.get('album_mid', ''),
-            interval=song_data.get('interval', 0),
-            raw_data=song_data.get('raw_data')
-        )
+        song_info = SongInfo.from_dict(song_data)
 
         # 下载歌曲
         result = run_async(music_downloader.download_song(
@@ -249,11 +243,17 @@ def api_health():
     })
 
 
+@lru_cache(maxsize=128)
+def get_cached_lyric_data(song_mid):
+    """带缓存的歌词获取"""
+    return run_async(get_lyric(song_mid))
+
+
 @bp.route('/lyric/<song_mid>')
 def api_lyric(song_mid):
     """获取歌词API"""
     try:
-        lyrics_data = run_async(get_lyric(song_mid))
+        lyrics_data = get_cached_lyric_data(song_mid)
         return jsonify(lyrics_data)
     except Exception as e:
         logger.error(f"获取歌词失败: {e}")
