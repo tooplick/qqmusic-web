@@ -31,13 +31,13 @@
         <div class="main-view">
             <!-- 封面视图 (默认显示) -->
             <div class="cover-view active" id="cover-view">
-                <div class="song-meta">
-                    <h1 class="song-title" id="current-title">等待播放</h1>
-                    <p class="song-artist" id="current-artist">选择一首歌曲开始</p>
-                </div>
                 <div class="album-cover-large" id="album-cover">
                     <img src="https://y.gtimg.cn/music/photo_new/T002R800x800M000003y8dsH2wBHlo_1.jpg" alt="Cover"
                         id="current-cover" loading="lazy">
+                </div>
+                <div class="song-meta">
+                    <h1 class="song-title" id="current-title">等待播放</h1>
+                    <p class="song-artist" id="current-artist">选择一首歌曲开始</p>
                 </div>
             </div>
 
@@ -64,28 +64,34 @@
 
             <!-- 单行控制 -->
             <div class="controls-row">
-                <div class="time-label" id="current-time">0:00</div>
+                <div class="controls-left">
+                    <div class="time-label" id="current-time">0:00</div>
 
-                <div class="quality-selector">
-                    <input type="radio" name="quality" id="q-flac" value="flac" checked>
-                    <label for="q-flac">FLAC</label>
-                    <input type="radio" name="quality" id="q-mp3" value="mp3">
-                    <label for="q-mp3">MP3</label>
-                    <div class="selector-highlight"></div>
-                </div>
-
-                <button class="ctrl-btn" id="prev-btn"><i class="fas fa-backward-step"></i></button>
-                <button class="ctrl-btn play-btn-main" id="play-btn"><i class="fas fa-play"></i></button>
-                <button class="ctrl-btn" id="next-btn"><i class="fas fa-forward-step"></i></button>
-
-                <div class="volume-control">
-                    <i class="fas fa-volume-high"></i>
-                    <div class="volume-slider" id="volume-slider">
-                        <div class="volume-fill" id="volume-fill"></div>
+                    <div class="quality-selector">
+                        <input type="radio" name="quality" id="q-flac" value="flac" checked>
+                        <label for="q-flac">FLAC</label>
+                        <input type="radio" name="quality" id="q-mp3" value="mp3">
+                        <label for="q-mp3">MP3</label>
+                        <div class="selector-highlight"></div>
                     </div>
                 </div>
 
-                <div class="time-label" id="total-time">0:00</div>
+                <div class="controls-center">
+                    <button class="ctrl-btn" id="prev-btn"><i class="fas fa-backward-step"></i></button>
+                    <button class="ctrl-btn play-btn-main" id="play-btn"><i class="fas fa-play"></i></button>
+                    <button class="ctrl-btn" id="next-btn"><i class="fas fa-forward-step"></i></button>
+                </div>
+
+                <div class="controls-right">
+                    <div class="volume-control">
+                        <i class="fas fa-volume-high"></i>
+                        <div class="volume-slider" id="volume-slider">
+                            <div class="volume-fill" id="volume-fill"></div>
+                        </div>
+                    </div>
+
+                    <div class="time-label" id="total-time">0:00</div>
+                </div>
             </div>
         </div>
     </div>
