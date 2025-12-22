@@ -1,7 +1,7 @@
 # QQ Music 网页播放器
 
 一个基于Flask和QQ音乐API的在线音乐下载工具，支持搜索、播放、下载和音质选择功能。
-
+![home](images/home.png)
 ## 功能特性
 
 ###  核心功能
