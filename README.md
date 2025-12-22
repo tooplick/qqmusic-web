@@ -4,7 +4,7 @@
 
 <div align="center">
   <a href="https://qq.ygking.top">
-    <img src="images/home.png" width="80%" alt="home">q
+    <img src="images/home.png" width="80%" alt="home">
   </a>
 </div>
 
