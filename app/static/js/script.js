@@ -76,14 +76,19 @@ class UI {
         this.activeBgLayer = 1; // 当前活跃的背景层 (1 或 2)
 
         // 监听用户手动滚动歌词
-        this.els.lyricsScroll.addEventListener('scroll', () => {
+        // 监听用户手动滚动歌词 (Touch & Wheel)
+        const resetScrolling = debounce(() => {
+            this.userScrolling = false;
+        }, 3000);
+
+        const onUserInteract = () => {
             this.userScrolling = true;
-            clearTimeout(this.scrollTimeout);
-            // 3秒后恢复自动滚动
-            this.scrollTimeout = setTimeout(() => {
-                this.userScrolling = false;
-            }, 3000);
-        }, { passive: true });
+            resetScrolling();
+        };
+
+        this.els.lyricsScroll.addEventListener('touchstart', onUserInteract, { passive: true });
+        this.els.lyricsScroll.addEventListener('touchmove', onUserInteract, { passive: true });
+        this.els.lyricsScroll.addEventListener('wheel', onUserInteract, { passive: true });
     }
 
     // 淡入淡出切换背景
@@ -454,7 +459,11 @@ class UI {
 
     highlightLyric(time) {
         if (!this.currentLyrics.length) return;
+
         // 移除 userScrolling 检查，因为 scrollTo 会触发 scroll 事件，导致自我阻塞
+        // UPDATE: 现在我们通过具体的交互事件(touch/wheel)来判断 userScrolling，所以可以安全地恢复检查了
+        // 如果用户正在滚动，只更新高亮样式，不进行自动滚动
+
 
         let idx = -1;
         // 找到最后一句 <= time 的歌词
@@ -477,8 +486,9 @@ class UI {
                 curr.classList.add('active');
 
                 // --- 优化滚动逻辑 ---
+                // --- 优化滚动逻辑 ---
                 // 参考用户代码，使用 scrollTo + smooth behavior
-                if (this.els.lyricsScroll) {
+                if (this.els.lyricsScroll && !this.userScrolling) {
                     const containerHeight = this.els.lyricsScroll.clientHeight;
                     // const rowTop = curr.offsetTop; // offsetTop 是相对于 offsetParent 的
                     // 最好结合 scrollTop 计算相对位置，或者确保 offsetParent 正确
