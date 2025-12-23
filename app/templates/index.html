@@ -12,8 +12,11 @@
 </head>
 
 <body>
-    <!-- 动态背景层 -->
-    <div class="bg-layer" id="bg-layer"></div>
+    <!-- 动态背景层（双层实现淡入淡出） -->
+    <div class="bg-container">
+        <div class="bg-layer" id="bg-layer-1"></div>
+        <div class="bg-layer fade-out" id="bg-layer-2"></div>
+    </div>
     <div class="bg-mask"></div>
 
     <!-- 主视图容器 -->

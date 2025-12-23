@@ -26,17 +26,46 @@ body {
     color: var(--text-primary);
 }
 
-/* 背景 */
-.bg-layer {
+/* 背景容器 */
+.bg-container {
     position: fixed;
+    inset: -20%;
+    width: 140%;
+    height: 140%;
+    z-index: -2;
+}
+
+/* 双层背景实现淡入淡出 */
+.bg-layer {
+    position: absolute;
     inset: 0;
     background-image: url('https://y.gtimg.cn/music/photo_new/T002R800x800M000003y8dsH2wBHlo_1.jpg');
     background-size: cover;
     background-position: center;
-    filter: blur(80px) saturate(150%) brightness(0.9);
-    transform: scale(1.2);
-    z-index: -2;
-    transition: background-image 1s ease-in-out;
+    filter: blur(40px) saturate(200%) brightness(0.8);
+    opacity: 1;
+    transition: opacity 0.8s ease-in-out;
+    animation: bgFloat 20s linear infinite;
+    animation-play-state: paused;
+}
+
+.bg-layer.fade-out {
+    opacity: 0;
+}
+
+/* 播放时才启动动画 */
+body.playing .bg-layer {
+    animation-play-state: running;
+}
+
+@keyframes bgFloat {
+    0% {
+        transform: scale(1.2) rotate(0deg);
+    }
+
+    100% {
+        transform: scale(1.2) rotate(360deg);
+    }
 }
 
 .bg-mask {
@@ -369,7 +398,7 @@ body {
     bottom: 0;
     left: 0;
     right: 0;
-    background: var(--controls-bg, rgba(255, 255, 255, 0.95));
+    background: var(--controls-bg, rgba(255, 255, 255, 0.6));
     backdrop-filter: blur(30px);
     -webkit-backdrop-filter: blur(30px);
     border-top: 1px solid var(--divider);

@@ -33,7 +33,8 @@ class DOM {
 class UI {
     constructor() {
         this.els = {
-            bgLayer: DOM.get('bg-layer'),
+            bgLayer1: DOM.get('bg-layer-1'),
+            bgLayer2: DOM.get('bg-layer-2'),
             albumCover: DOM.get('current-cover'),
             title: DOM.get('current-title'),
             artist: DOM.get('current-artist'),
@@ -71,6 +72,8 @@ class UI {
         this.userScrolling = false;
         this.lastHighlightIdx = -1;
         this.scrollTimeout = null;
+        this.coverCache = new Map(); // 封面缓存
+        this.activeBgLayer = 1; // 当前活跃的背景层 (1 或 2)
 
         // 监听用户手动滚动歌词
         this.els.lyricsScroll.addEventListener('scroll', () => {
@@ -81,6 +84,58 @@ class UI {
                 this.userScrolling = false;
             }, 3000);
         }, { passive: true });
+    }
+
+    // 淡入淡出切换背景
+    setBackground(url) {
+        // 先预加载图片，完成后再切换
+        const img = new Image();
+        img.onload = () => {
+            // 获取当前和下一层
+            const currentEl = this.activeBgLayer === 1 ? this.els.bgLayer1 : this.els.bgLayer2;
+            const nextEl = this.activeBgLayer === 1 ? this.els.bgLayer2 : this.els.bgLayer1;
+
+            // 设置新背景到下一层
+            nextEl.style.backgroundImage = `url('${url}')`;
+
+            // 切换显示
+            currentEl.classList.add('fade-out');
+            nextEl.classList.remove('fade-out');
+
+            // 更新活跃层
+            this.activeBgLayer = this.activeBgLayer === 1 ? 2 : 1;
+        };
+        img.src = url;
+    }
+
+    // 预加载封面到缓存
+    preloadCover(song) {
+        const key = song.mid;
+        if (this.coverCache.has(key)) return;
+
+        const defaultCover = 'https://y.gtimg.cn/music/photo_new/T002R800x800M000003y8dsH2wBHlo_1.jpg';
+
+        if (song.album_mid) {
+            const url = `https://y.gtimg.cn/music/photo_new/T002R800x800M000${song.album_mid}.jpg`;
+            const img = new Image();
+            img.onload = () => this.coverCache.set(key, url);
+            img.src = url;
+        } else {
+            // 没有 album_mid，调用 API 获取
+            fetch('/api/cover', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ song_data: song, size: 800 })
+            })
+                .then(r => r.json())
+                .then(data => {
+                    const url = (data.cover_url && data.source !== 'default') ? data.cover_url : defaultCover;
+                    const img = new Image();
+                    img.onload = () => this.coverCache.set(key, url);
+                    img.src = url;
+                })
+                .catch(() => { });
+        }
     }
 
     notify(msg, type = 'success') {
@@ -101,8 +156,13 @@ class UI {
 
     setPlaying(isPlaying) {
         this.els.playBtn.innerHTML = isPlaying ? '<i class="fas fa-pause"></i>' : '<i class="fas fa-play"></i>';
-        if (isPlaying) this.els.playerView.classList.add('playing');
-        else this.els.playerView.classList.remove('playing');
+        if (isPlaying) {
+            this.els.playerView.classList.add('playing');
+            document.body.classList.add('playing');
+        } else {
+            this.els.playerView.classList.remove('playing');
+            document.body.classList.remove('playing');
+        }
     }
 
     // Drawer Control
@@ -219,8 +279,10 @@ class UI {
         // 设置封面的辅助函数
         const setCover = (url) => {
             this.els.albumCover.src = url;
-            this.els.bgLayer.style.backgroundImage = `url('${url}')`;
+            this.setBackground(url); // 使用淡入淡出切换背景
             this._extractCoverColor(url);
+            // 同时更新缓存
+            this.coverCache.set(song.mid, url);
 
             // 更新 Media Session 元数据（浏览器/系统级显示）
             if ('mediaSession' in navigator) {
@@ -235,6 +297,12 @@ class UI {
                 });
             }
         };
+
+        // 优先使用缓存的封面（避免闪烁）
+        if (this.coverCache.has(song.mid)) {
+            setCover(this.coverCache.get(song.mid));
+            return;
+        }
 
         // 如果有 album_mid，先尝试直接使用
         if (song.album_mid) {
@@ -690,6 +758,7 @@ class Player {
     addToQueue(song) {
         this.queue.push(song);
         this._saveQueue();
+        this.ui.preloadCover(song); // 预加载封面
         this.ui.renderPlaylist(this.queue, this.currentIndex);
         this.ui.notify(`已添加到队列: ${song.name}`);
     }
@@ -700,6 +769,7 @@ class Player {
         const insertPos = this.currentIndex + 1;
         this.queue.splice(insertPos, 0, song);
         this._saveQueue();
+        this.ui.preloadCover(song); // 预加载封面
         this.ui.renderPlaylist(this.queue, this.currentIndex);
         this.ui.notify(`下一首播放: ${song.name}`);
     }
