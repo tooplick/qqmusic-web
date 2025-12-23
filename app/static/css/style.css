@@ -525,6 +525,8 @@ body {
     width: 100vw;
     max-width: 500px;
     height: 100vh;
+    height: 100dvh;
+    /* 动态视口高度 */
     background: var(--bg-glass);
     backdrop-filter: blur(50px);
     -webkit-backdrop-filter: blur(50px);
@@ -698,7 +700,10 @@ body {
     justify-content: center;
     align-items: center;
     padding: 16px 0;
+    /* 手机端底部安全区 */
+    padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
     gap: 15px;
+    flex-shrink: 0;
 }
 
 .page-btn {

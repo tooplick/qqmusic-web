@@ -710,8 +710,17 @@ class App {
 
     async doSearch(keyword, page) {
         if (!keyword) return;
+
+        // 防止重复请求
+        if (this.isSearching) return;
+        this.isSearching = true;
+
         this.keyword = keyword;
         this.page = page;
+
+        // 立即禁用分页按钮
+        this.ui.els.prevPage.disabled = true;
+        this.ui.els.nextPage.disabled = true;
 
         this.ui.els.loadingSpinner.style.display = 'flex';
         this.ui.els.resultsList.innerHTML = '';
@@ -781,6 +790,7 @@ class App {
             this.ui.notify(e.message, 'error');
         } finally {
             this.ui.els.loadingSpinner.style.display = 'none';
+            this.isSearching = false;
         }
     }
 
