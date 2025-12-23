@@ -44,7 +44,6 @@ class UI {
             currentTime: DOM.get('current-time'),
             totalTime: DOM.get('total-time'),
             progressFill: DOM.get('progress-fill'),
-            volumeFill: DOM.get('volume-fill'),
 
             // Cover/Lyrics Toggle
             coverView: DOM.get('cover-view'),
@@ -222,6 +221,19 @@ class UI {
             this.els.albumCover.src = url;
             this.els.bgLayer.style.backgroundImage = `url('${url}')`;
             this._extractCoverColor(url);
+
+            // 更新 Media Session 元数据（浏览器/系统级显示）
+            if ('mediaSession' in navigator) {
+                navigator.mediaSession.metadata = new MediaMetadata({
+                    title: song.name,
+                    artist: song.singers,
+                    album: song.album || '',
+                    artwork: [
+                        { src: url.replace('R800x800', 'R300x300'), sizes: '300x300', type: 'image/jpeg' },
+                        { src: url, sizes: '800x800', type: 'image/jpeg' }
+                    ]
+                });
+            }
         };
 
         // 如果有 album_mid，先尝试直接使用
@@ -409,19 +421,105 @@ class UI {
 }
 
 class Player {
+    // 播放模式常量
+    static MODES = {
+        SEQUENCE: 'sequence',   // 顺序播放
+        REPEAT_ONE: 'repeat_one', // 单曲循环
+        SHUFFLE: 'shuffle'      // 随机播放
+    };
+
+    // 存储键
+    static STORAGE_KEYS = {
+        QUEUE: 'qqmusic_queue',
+        MODE: 'qqmusic_playmode'
+    };
+
     constructor(ui) {
         this.ui = ui;
         this.audio = new Audio();
         this.playlist = [];  // 搜索结果（临时）
         this.queue = [];     // 播放队列（持久）
         this.currentIndex = -1;
-        this.volume = 1.0;
+        this.playMode = Player.MODES.SEQUENCE;
+
+        // 从存储中加载播放列表和模式
+        this._loadFromStorage();
         this._initAudio();
     }
 
-    _initAudio() {
+    // 从 localStorage 加载数据
+    _loadFromStorage() {
+        try {
+            // 加载播放队列
+            const savedQueue = localStorage.getItem(Player.STORAGE_KEYS.QUEUE);
+            if (savedQueue) {
+                this.queue = JSON.parse(savedQueue);
+                this.ui.renderPlaylist(this.queue, this.currentIndex);
+            }
 
-        this.audio.onended = () => this.next();
+            // 加载播放模式
+            const savedMode = localStorage.getItem(Player.STORAGE_KEYS.MODE);
+            if (savedMode && Object.values(Player.MODES).includes(savedMode)) {
+                this.playMode = savedMode;
+                this._updateModeUI();
+            }
+        } catch (e) {
+            console.warn('加载存储数据失败:', e);
+        }
+    }
+
+    // 保存播放队列到 localStorage
+    _saveQueue() {
+        try {
+            localStorage.setItem(Player.STORAGE_KEYS.QUEUE, JSON.stringify(this.queue));
+        } catch (e) {
+            console.warn('保存播放列表失败:', e);
+        }
+    }
+
+    // 保存播放模式到 localStorage
+    _saveMode() {
+        try {
+            localStorage.setItem(Player.STORAGE_KEYS.MODE, this.playMode);
+        } catch (e) {
+            console.warn('保存播放模式失败:', e);
+        }
+    }
+
+    // 更新播放模式 UI，不显示通知
+    _updateModeUI() {
+        const modeBtn = document.getElementById('mode-btn');
+        if (!modeBtn) return;
+
+        switch (this.playMode) {
+            case Player.MODES.SEQUENCE:
+                modeBtn.innerHTML = '<i class="fas fa-repeat"></i>';
+                modeBtn.title = '顺序播放';
+                modeBtn.classList.remove('active');
+                break;
+            case Player.MODES.REPEAT_ONE:
+                modeBtn.innerHTML = '<i class="fas fa-repeat"></i><span class="mode-badge">1</span>';
+                modeBtn.title = '单曲循环';
+                modeBtn.classList.add('active');
+                break;
+            case Player.MODES.SHUFFLE:
+                modeBtn.innerHTML = '<i class="fas fa-shuffle"></i>';
+                modeBtn.title = '随机播放';
+                modeBtn.classList.add('active');
+                break;
+        }
+    }
+
+    _initAudio() {
+        this.audio.onended = () => {
+            if (this.playMode === Player.MODES.REPEAT_ONE) {
+                // 单曲循环：重新播放当前歌曲
+                this.audio.currentTime = 0;
+                this.audio.play();
+            } else {
+                this.next();
+            }
+        };
         this.audio.onplay = () => {
             this.ui.setPlaying(true);
             this._startTimer();
@@ -435,6 +533,14 @@ class Player {
             this.ui.setPlaying(false);
             this._stopTimer();
         };
+
+        // 注册 Media Session 动作处理器（浏览器/系统媒体控制）
+        if ('mediaSession' in navigator) {
+            navigator.mediaSession.setActionHandler('play', () => this.toggle());
+            navigator.mediaSession.setActionHandler('pause', () => this.toggle());
+            navigator.mediaSession.setActionHandler('previoustrack', () => this.prev());
+            navigator.mediaSession.setActionHandler('nexttrack', () => this.next());
+        }
     }
 
     _startTimer() {
@@ -490,7 +596,6 @@ class Player {
             if (!res.ok) throw new Error(data.error);
 
             this.audio.src = data.url;
-            this.audio.volume = this.volume;
             await this.audio.play();
             this.ui.notify(`正在播放: ${song.name} (${data.quality})`);
 
@@ -517,8 +622,62 @@ class Player {
 
     next() {
         if (!this.queue.length) return;
-        const idx = (this.currentIndex + 1) % this.queue.length;
-        this.playFromQueue(idx);
+        const idx = this._getNextIndex();
+        if (idx !== -1) this.playFromQueue(idx);
+    }
+
+    // 根据播放模式获取下一首索引
+    _getNextIndex() {
+        if (!this.queue.length) return -1;
+
+        switch (this.playMode) {
+            case Player.MODES.SHUFFLE:
+                // 随机播放：随机选择一首（避免选中当前歌曲）
+                if (this.queue.length === 1) return 0;
+                let randomIdx;
+                do {
+                    randomIdx = Math.floor(Math.random() * this.queue.length);
+                } while (randomIdx === this.currentIndex);
+                return randomIdx;
+            case Player.MODES.SEQUENCE:
+            default:
+                // 顺序播放：循环到下一首
+                return (this.currentIndex + 1) % this.queue.length;
+        }
+    }
+
+    // 切换播放模式
+    toggleMode() {
+        const modes = [Player.MODES.SEQUENCE, Player.MODES.REPEAT_ONE, Player.MODES.SHUFFLE];
+        const currentIdx = modes.indexOf(this.playMode);
+        this.playMode = modes[(currentIdx + 1) % modes.length];
+
+        // 更新 UI
+        const modeBtn = document.getElementById('mode-btn');
+
+        switch (this.playMode) {
+            case Player.MODES.SEQUENCE:
+                modeBtn.innerHTML = '<i class="fas fa-repeat"></i>';
+                modeBtn.title = '顺序播放';
+                modeBtn.classList.remove('active');
+                this.ui.notify('顺序播放');
+                break;
+            case Player.MODES.REPEAT_ONE:
+                modeBtn.innerHTML = '<i class="fas fa-repeat"></i><span class="mode-badge">1</span>';
+                modeBtn.title = '单曲循环';
+                modeBtn.classList.add('active');
+                this.ui.notify('单曲循环');
+                break;
+            case Player.MODES.SHUFFLE:
+                modeBtn.innerHTML = '<i class="fas fa-shuffle"></i>';
+                modeBtn.title = '随机播放';
+                modeBtn.classList.add('active');
+                this.ui.notify('随机播放');
+                break;
+        }
+
+        // 保存模式到存储
+        this._saveMode();
     }
 
     seek(time) {
@@ -530,6 +689,7 @@ class Player {
     // 添加到队列末尾
     addToQueue(song) {
         this.queue.push(song);
+        this._saveQueue();
         this.ui.renderPlaylist(this.queue, this.currentIndex);
         this.ui.notify(`已添加到队列: ${song.name}`);
     }
@@ -539,6 +699,7 @@ class Player {
         // 插入到当前播放位置的下一个
         const insertPos = this.currentIndex + 1;
         this.queue.splice(insertPos, 0, song);
+        this._saveQueue();
         this.ui.renderPlaylist(this.queue, this.currentIndex);
         this.ui.notify(`下一首播放: ${song.name}`);
     }
@@ -557,6 +718,7 @@ class Player {
         }
 
         this.queue.splice(index, 1);
+        this._saveQueue();
         this.ui.renderPlaylist(this.queue, this.currentIndex);
     }
 
@@ -565,6 +727,7 @@ class Player {
         this.queue = [];
         this.currentIndex = -1;
         this.audio.pause();
+        this._saveQueue();
         this.ui.renderPlaylist(this.queue, this.currentIndex);
         this.ui.notify('播放列表已清空');
     }
@@ -602,7 +765,6 @@ class Player {
             .then(data => {
                 if (data.error) throw new Error(data.error);
                 this.audio.src = data.url;
-                this.audio.volume = this.volume;
                 this.audio.play();
                 this.ui.notify(`正在播放: ${song.name} (${data.quality})`);
             })
@@ -611,11 +773,6 @@ class Player {
             });
     }
 
-    setVolume(vol) {
-        this.volume = Math.max(0, Math.min(1, vol));
-        this.audio.volume = this.volume;
-        this.ui.els.volumeFill.style.width = `${this.volume * 100}%`;
-    }
 }
 
 class App {
@@ -645,12 +802,8 @@ class App {
             }
         };
 
-        // Volume
-        DOM.get('volume-slider').onclick = (e) => {
-            const rect = e.currentTarget.getBoundingClientRect();
-            const pct = (e.clientX - rect.left) / rect.width;
-            this.player.setVolume(pct);
-        };
+        // Playback Mode
+        DOM.get('mode-btn').onclick = () => this.player.toggleMode();
 
         // Cover/Lyrics Toggle
         this.ui.els.coverView.onclick = () => this.ui.toggleView();
@@ -673,12 +826,19 @@ class App {
 
         // Search
         const searchInput = DOM.get('search-input');
-        const debouncedSearch = debounce((kw) => this.doSearch(kw, 1), 500);
 
+        // 按 Enter 键搜索
+        searchInput.onkeydown = (e) => {
+            if (e.key === 'Enter') {
+                const val = e.target.value.trim();
+                if (val) this.doSearch(val, 1);
+            }
+        };
+
+        // 输入时只显示/隐藏清除按钮
         searchInput.oninput = (e) => {
             const val = e.target.value.trim();
             DOM.get('search-clear').style.display = val ? 'block' : 'none';
-            if (val) debouncedSearch(val);
         };
 
         DOM.get('search-clear').onclick = () => {
