@@ -355,7 +355,10 @@ class UI {
 
         this.currentLyrics.forEach((l, i) => {
             const row = DOM.create('div', 'lrc-line', l.txt);
-            row.onclick = () => window.player.seek(l.t);
+            row.onclick = (e) => {
+                e.stopPropagation(); // 阻止冒泡，避免触发视图切换
+                window.player.seek(l.t);
+            };
             this.els.lyricsScroll.appendChild(row);
         });
     }
