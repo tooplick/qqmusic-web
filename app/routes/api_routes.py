@@ -1,4 +1,5 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, Response
+import httpx  # 用于图片代理
 from functools import lru_cache
 from datetime import datetime
 from pathlib import Path
@@ -313,3 +314,42 @@ def api_cover():
             'source': 'default',
             'error': str(e)
         })
+
+
+@bp.route('/image_proxy')
+def api_image_proxy():
+    """图片代理API - 解决CORS限制问题
+    
+    通过后端获取QQ音乐CDN图片并返回，允许前端Canvas读取像素数据
+    """
+    url = request.args.get('url', '')
+    
+    if not url:
+        return jsonify({'error': '缺少图片URL'}), 400
+    
+    # 只允许代理QQ音乐的图片
+    if not url.startswith('https://y.gtimg.cn/'):
+        return jsonify({'error': '不允许代理此域名'}), 403
+    
+    try:
+        # 请求原始图片
+        resp = httpx.get(url, timeout=10, headers={
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+            'Referer': 'https://y.qq.com/'
+        })
+        
+        if resp.status_code != 200:
+            return jsonify({'error': f'获取图片失败: {resp.status_code}'}), resp.status_code
+        
+        # 返回图片并设置CORS头
+        return Response(
+            resp.content,
+            mimetype=resp.headers.get('Content-Type', 'image/jpeg'),
+            headers={
+                'Access-Control-Allow-Origin': '*',
+                'Cache-Control': 'public, max-age=86400'  # 缓存24小时
+            }
+        )
+    except Exception as e:
+        logger.error(f"图片代理失败: {e}")
+        return jsonify({'error': f'图片代理失败: {str(e)}'}), 500

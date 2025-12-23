@@ -398,7 +398,7 @@ body.playing .bg-layer {
     bottom: 0;
     left: 0;
     right: 0;
-    background: var(--controls-bg, rgba(255, 255, 255, 0.6));
+    background: var(--controls-bg, rgba(255, 255, 255, 0.4));
     backdrop-filter: blur(30px);
     -webkit-backdrop-filter: blur(30px);
     border-top: 1px solid var(--divider);
@@ -478,48 +478,25 @@ body.playing .bg-layer {
     font-size: 32px;
 }
 
-/* 音质选择器 */
-.quality-selector {
-    background: rgba(118, 118, 128, 0.12);
-    padding: 2px;
+/* 音质切换按钮 */
+.quality-toggle-btn {
+    background: none;
+    border: none;
+    padding: 6px 14px;
     border-radius: 8px;
-    display: flex;
-    position: relative;
-}
-
-.quality-selector input {
-    display: none;
-}
-
-.quality-selector label {
-    padding: 5px 20px;
     font-size: 12px;
-    font-weight: 500;
-    cursor: pointer;
-    z-index: 2;
-    transition: color 0.2s;
-}
-
-.selector-highlight {
-    position: absolute;
-    top: 2px;
-    left: 2px;
-    height: calc(100% - 4px);
-    width: 50%;
-    background: #fff;
-    border-radius: 6px;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-    transition: transform 0.25s ease;
-    z-index: 1;
-}
-
-#q-mp3:checked~.selector-highlight {
-    transform: translateX(100%);
-}
-
-#q-flac:checked+label,
-#q-mp3:checked+label {
     font-weight: 600;
+    cursor: pointer;
+    color: var(--text-primary);
+    transition: all 0.2s ease;
+}
+
+.quality-toggle-btn:hover {
+    opacity: 0.7;
+}
+
+.quality-toggle-btn:active {
+    transform: scale(0.95);
 }
 
 /* 播放模式按钮 */
@@ -770,7 +747,7 @@ body.playing .bg-layer {
 /* 通知 */
 .notification-container {
     position: fixed;
-    top: 60px;
+    top: 14px;
     left: 50%;
     transform: translateX(-50%);
     z-index: 1000;

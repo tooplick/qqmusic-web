@@ -328,8 +328,12 @@ class UI {
     }
 
     _extractCoverColor(coverUrl) {
+        // 使用代理接口解决CORS限制，允许Canvas读取像素数据
         const img = new Image();
         img.crossOrigin = 'Anonymous';
+        img.onerror = () => {
+            // CORS 失败时静默忽略，使用默认控制栏颜色
+        };
         img.onload = () => {
             try {
                 const canvas = document.createElement('canvas');
@@ -363,16 +367,21 @@ class UI {
                     b = Math.min(255, Math.round(128 + (b - 128) * factor));
                 }
 
-                // 设置控制栏背景色（降低透明度使颜色更明显）
+                // 设置控制栏背景色（增加透明度使颜色更柔和）
                 document.documentElement.style.setProperty(
                     '--controls-bg',
-                    `rgba(${r}, ${g}, ${b}, 0.75)`
+                    `rgba(${r}, ${g}, ${b}, 0.25)`
                 );
             } catch (e) {
                 console.log('Color extraction failed:', e);
             }
         };
-        img.src = coverUrl;
+        // 通过代理接口获取图片，绕过CORS限制
+        if (coverUrl.startsWith('https://y.gtimg.cn/')) {
+            img.src = `/api/image_proxy?url=${encodeURIComponent(coverUrl)}`;
+        } else {
+            img.src = coverUrl;
+        }
     }
 
     updateProgress(curr, total) {
@@ -651,7 +660,7 @@ class Player {
             .catch(() => this.ui.renderLyrics(null));
 
         // 2. 获取播放链接
-        const quality = document.querySelector('input[name="quality"]:checked').value;
+        const quality = document.getElementById('quality-value').value;
         const preferFlac = (quality === 'flac');
 
         try {
@@ -823,7 +832,7 @@ class Player {
             .catch(() => this.ui.renderLyrics(null));
 
         // 获取播放链接
-        const quality = document.querySelector('input[name="quality"]:checked').value;
+        const quality = document.getElementById('quality-value').value;
         const preferFlac = (quality === 'flac');
 
         fetch('/api/play_url', {
@@ -874,6 +883,19 @@ class App {
 
         // Playback Mode
         DOM.get('mode-btn').onclick = () => this.player.toggleMode();
+
+        // Quality Toggle
+        DOM.get('quality-toggle').onclick = () => {
+            const valueInput = DOM.get('quality-value');
+            const label = DOM.get('quality-label');
+            if (valueInput.value === 'flac') {
+                valueInput.value = 'mp3';
+                label.textContent = 'MP3';
+            } else {
+                valueInput.value = 'flac';
+                label.textContent = 'FLAC';
+            }
+        };
 
         // Cover/Lyrics Toggle
         this.ui.els.coverView.onclick = () => this.ui.toggleView();

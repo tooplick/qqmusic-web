@@ -77,13 +77,10 @@
                 <div class="controls-left">
                     <div class="time-label" id="current-time">0:00</div>
 
-                    <div class="quality-selector">
-                        <input type="radio" name="quality" id="q-flac" value="flac" checked>
-                        <label for="q-flac">FLAC</label>
-                        <input type="radio" name="quality" id="q-mp3" value="mp3">
-                        <label for="q-mp3">MP3</label>
-                        <div class="selector-highlight"></div>
-                    </div>
+                    <button class="quality-toggle-btn" id="quality-toggle" title="点击切换音质">
+                        <span id="quality-label">FLAC</span>
+                    </button>
+                    <input type="hidden" name="quality" id="quality-value" value="flac">
                 </div>
 
                 <div class="controls-center">
