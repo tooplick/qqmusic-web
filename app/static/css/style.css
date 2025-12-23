@@ -904,9 +904,13 @@ body.playing .bg-layer {
         display: none;
     }
 
-    .controls-left,
-    .controls-right {
+    .controls-left {
         display: none;
+    }
+
+    .controls-right {
+        flex: 0;
+        gap: 8px;
     }
 
     .controls-center {
@@ -1001,15 +1005,16 @@ body.playing .bg-layer {
 
     /* 通知 */
     .notification-container {
-        top: 50px;
-        left: 10px;
-        right: 10px;
-        transform: none;
+        top: 70px;
+        width: auto;
+        max-width: 80%;
     }
 
     .toast {
-        padding: 10px 18px;
+        padding: 10px 20px;
         font-size: 13px;
+        border-radius: 20px;
+        white-space: nowrap;
     }
 }
 
