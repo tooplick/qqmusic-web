@@ -884,8 +884,11 @@ class App {
         // Playback Mode
         DOM.get('mode-btn').onclick = () => this.player.toggleMode();
 
-        // Quality Toggle
-        DOM.get('quality-toggle').onclick = () => {
+        // Quality Toggle (使用 addEventListener 确保移动端兼容)
+        const qualityToggle = DOM.get('quality-toggle');
+        const toggleQuality = (e) => {
+            e.preventDefault();
+            e.stopPropagation();
             const valueInput = DOM.get('quality-value');
             const label = DOM.get('quality-label');
             if (valueInput.value === 'flac') {
@@ -896,6 +899,7 @@ class App {
                 label.textContent = 'FLAC';
             }
         };
+        qualityToggle.addEventListener('click', toggleQuality);
 
         // Cover/Lyrics Toggle
         this.ui.els.coverView.onclick = () => this.ui.toggleView();
