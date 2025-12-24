@@ -197,6 +197,22 @@ def api_download():
                 'error': '这首歌是VIP歌曲，需要登录才能下载高音质版本'
             }), 403
 
+        # 自动清理：如果音乐文件夹达到10个文件则自动清空
+        from ..config import CONFIG
+        import shutil
+        music_dir = Path(CONFIG["MUSIC_DIR"])
+        if music_dir.exists():
+            files = list(music_dir.glob("*"))
+            if len(files) >= 10:
+                logger.info(f"音乐文件夹已达{len(files)}个文件，自动清空...")
+                for f in files:
+                    try:
+                        if f.is_file():
+                            f.unlink()
+                        elif f.is_dir():
+                            shutil.rmtree(f)
+                    except Exception as e:
+                        logger.error(f"删除文件失败 {f}: {e}")
 
         # 创建SongInfo对象
         from ..models import SongInfo

@@ -146,6 +146,20 @@ def get_qr_status(session_id):
         return jsonify({'error': f'获取二维码状态失败: {str(e)}'}), 500
 
 
+@bp.route('/api/qr_cancel/<session_id>', methods=['POST'])
+def cancel_qr_session(session_id):
+    """取消二维码会话，停止后台轮询"""
+    try:
+        if session_id in qr_sessions:
+            del qr_sessions[session_id]
+            logger.info(f"会话 {session_id} 已取消")
+            return jsonify({'success': True, 'message': '会话已取消'})
+        return jsonify({'success': True, 'message': '会话不存在或已过期'})
+    except Exception as e:
+        logger.error(f"取消会话失败: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
 @bp.route('/api/credential/status')
 def check_credential_status():
     """检查凭证状态"""
