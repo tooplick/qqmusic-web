@@ -227,8 +227,6 @@ async function getCredentialInfo() {
 
 // 清空音乐文件夹
 async function clearMusicFolder() {
-    if (!confirm('确定要清空音乐文件夹吗？')) return;
-
     clearMusicBtn.disabled = true;
     try {
         const response = await fetch(`${BASE_URL}/admin/api/clear_music`, { method: 'POST' });
