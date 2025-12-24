@@ -591,6 +591,7 @@ class Player {
 
         // URL缓存和预加载
         this.urlCache = new Map();  // {mid_quality: {url, quality, timestamp}}
+        this.lyricsCache = new Map();  // {mid: lyricsData}
         this._preloadTimer = null;  // 防抖定时器
 
         // 从存储中加载播放列表和模式
@@ -642,22 +643,26 @@ class Player {
         }, 500); // 500ms 防抖
     }
 
-    // 预加载队列中所有歌曲的播放URL
+    // 预加载队列中所有歌曲的播放URL和歌词
     async _preloadQueueUrls() {
         const quality = document.getElementById('quality-value')?.value || 'mp3';
         const preferFlac = (quality === 'flac');
         const cacheKey = (mid) => `${mid}_${quality}`;
 
-        // 过滤出未缓存的歌曲
-        const uncached = this.queue.filter(song => !this.urlCache.has(cacheKey(song.mid)));
+        // 过滤出未缓存URL的歌曲
+        const uncachedUrls = this.queue.filter(song => !this.urlCache.has(cacheKey(song.mid)));
+        // 过滤出未缓存歌词的歌曲
+        const uncachedLyrics = this.queue.filter(song => !this.lyricsCache.has(song.mid));
 
-        if (uncached.length === 0) return;
-        console.log(`预加载 ${uncached.length} 首歌曲URL...`);
+        if (uncachedUrls.length === 0 && uncachedLyrics.length === 0) return;
+        console.log(`预加载: ${uncachedUrls.length} 个URL, ${uncachedLyrics.length} 个歌词...`);
 
         // 并行请求（限制并发数）
         const batchSize = 3;
-        for (let i = 0; i < uncached.length; i += batchSize) {
-            const batch = uncached.slice(i, i + batchSize);
+
+        // 预加载URL
+        for (let i = 0; i < uncachedUrls.length; i += batchSize) {
+            const batch = uncachedUrls.slice(i, i + batchSize);
             await Promise.all(batch.map(async (song) => {
                 try {
                     const res = await fetch('/api/play_url', {
@@ -678,7 +683,22 @@ class Player {
                 }
             }));
         }
-        console.log(`预加载完成，缓存 ${this.urlCache.size} 个URL`);
+
+        // 预加载歌词
+        for (let i = 0; i < uncachedLyrics.length; i += batchSize) {
+            const batch = uncachedLyrics.slice(i, i + batchSize);
+            await Promise.all(batch.map(async (song) => {
+                try {
+                    const res = await fetch(`/api/lyric/${song.mid}`);
+                    const data = await res.json();
+                    this.lyricsCache.set(song.mid, data);
+                } catch (e) {
+                    // 预加载失败静默忽略
+                }
+            }));
+        }
+
+        console.log(`预加载完成：URL ${this.urlCache.size}个, 歌词 ${this.lyricsCache.size}个`);
     }
 
     // 保存播放模式到 localStorage
@@ -956,11 +976,18 @@ class Player {
         this.ui.updateSongInfo(song);
         this.ui.renderPlaylist(this.queue, this.currentIndex);
 
-        // 获取歌词
-        fetch(`/api/lyric/${song.mid}`)
-            .then(r => r.json())
-            .then(d => this.ui.renderLyrics(d))
-            .catch(() => this.ui.renderLyrics(null));
+        // 获取歌词（优先使用缓存）
+        if (this.lyricsCache.has(song.mid)) {
+            this.ui.renderLyrics(this.lyricsCache.get(song.mid));
+        } else {
+            fetch(`/api/lyric/${song.mid}`)
+                .then(r => r.json())
+                .then(d => {
+                    this.lyricsCache.set(song.mid, d);
+                    this.ui.renderLyrics(d);
+                })
+                .catch(() => this.ui.renderLyrics(null));
+        }
 
         // 获取播放链接（优先使用缓存）
         const quality = document.getElementById('quality-value').value;
