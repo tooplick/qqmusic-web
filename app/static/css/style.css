@@ -424,6 +424,8 @@ body.playing .bg-layer {
     /* 支持 iPhone 等带安全区的设备 */
     padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px));
     z-index: 50;
+    /* 颜色平滑过渡 */
+    transition: background 0.8s ease-out;
 }
 
 .bottom-controls .progress-bar {
