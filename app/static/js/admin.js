@@ -28,8 +28,11 @@ clearMusicBtn.addEventListener('click', clearMusicFolder);
 let currentSessionId = null;
 let checkInterval = null;
 
-// Toast 通知
+// Toast 通知（只显示一个）
 function showToast(message, type = 'info', duration = 3000) {
+    // 清除现有的弹窗
+    toastContainer.innerHTML = '';
+
     const icons = {
         success: 'fa-check-circle',
         error: 'fa-times-circle',
