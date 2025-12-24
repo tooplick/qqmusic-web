@@ -17,6 +17,18 @@ bp = Blueprint('admin', __name__, url_prefix='/admin')
 
 # 用于存储活跃的二维码会话
 qr_sessions = {}
+QR_SESSION_TTL = 300  # 二维码会话过期时间（秒）
+
+
+def cleanup_expired_sessions():
+    """清理过期的QR会话（避免内存泄漏）"""
+    now = time.time()
+    expired = [sid for sid, data in qr_sessions.items() 
+               if now - data.get('created_at', 0) > QR_SESSION_TTL]
+    for sid in expired:
+        del qr_sessions[sid]
+    if expired:
+        logger.debug(f"已清理 {len(expired)} 个过期的QR会话")
 
 
 def get_credential_manager():
@@ -34,6 +46,9 @@ def admin_index():
 def get_qrcode_api(qr_type):
     """获取登录二维码"""
     try:
+        # 清理过期会话（避免内存泄漏）
+        cleanup_expired_sessions()
+        
         logger.info(f"收到二维码生成请求，类型: {qr_type}")
 
         # 使用 run_async 来运行异步函数

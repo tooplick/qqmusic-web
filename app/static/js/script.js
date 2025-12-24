@@ -72,7 +72,8 @@ class UI {
         this.userScrolling = false;
         this.lastHighlightIdx = -1;
         this.scrollTimeout = null;
-        this.coverCache = new Map(); // 封面缓存
+        this.coverCache = new Map(); // 封面URL缓存 {mid: url}
+        this.pendingCoverRequests = new Map(); // 正在进行的请求 {mid: Promise}
         this.activeBgLayer = 1; // 当前活跃的背景层 (1 或 2)
 
         // 监听用户手动滚动歌词
@@ -133,16 +134,20 @@ class UI {
         this.els.drawerOverlay.classList.remove('show');
         document.body.style.overflow = '';
     }
-
     // 淡入淡出切换背景（同时提取颜色，共享图片加载）
     setBackground(url) {
-        // 先预加载图片，完成后再切换背景
-        const img = new Image();
-        img.onload = () => {
-            // 获取当前和下一层
-            const currentEl = this.activeBgLayer === 1 ? this.els.bgLayer1 : this.els.bgLayer2;
-            const nextEl = this.activeBgLayer === 1 ? this.els.bgLayer2 : this.els.bgLayer1;
+        // 获取当前和下一层
+        const currentEl = this.activeBgLayer === 1 ? this.els.bgLayer1 : this.els.bgLayer2;
+        const nextEl = this.activeBgLayer === 1 ? this.els.bgLayer2 : this.els.bgLayer1;
 
+        // 判断是否需要代理（QQ音乐CDN）
+        const needsProxy = url.startsWith('https://y.gtimg.cn/');
+        const proxyUrl = needsProxy ? `/api/image_proxy?url=${encodeURIComponent(url)}` : url;
+
+        // 加载图片（通过代理，可同时用于背景和颜色提取）
+        const img = new Image();
+        img.crossOrigin = 'Anonymous';
+        img.onload = () => {
             // 设置新背景到下一层
             nextEl.style.backgroundImage = `url('${url}')`;
 
@@ -153,97 +158,111 @@ class UI {
             // 更新活跃层
             this.activeBgLayer = this.activeBgLayer === 1 ? 2 : 1;
 
-            // 同步提取颜色：使用代理接口加载图片后提取
-            this._extractAndApplyColor(url);
+            // 直接使用已加载的图片提取颜色（无需再次加载）
+            this._extractColorFromImage(img);
         };
-        img.src = url;
+        img.onerror = () => {
+            // 代理失败时直接使用原始URL设置背景
+            nextEl.style.backgroundImage = `url('${url}')`;
+            currentEl.classList.add('fade-out');
+            nextEl.classList.remove('fade-out');
+            this.activeBgLayer = this.activeBgLayer === 1 ? 2 : 1;
+        };
+        img.src = proxyUrl;
     }
 
-    // 提取封面主色调并应用到控制栏
-    _extractAndApplyColor(coverUrl) {
-        const img = new Image();
-        img.crossOrigin = 'Anonymous';
-        img.onerror = () => {
-            // CORS 失败时静默忽略
-        };
-        img.onload = () => {
-            try {
-                const canvas = document.createElement('canvas');
-                const ctx = canvas.getContext('2d');
-                canvas.width = 100;
-                canvas.height = 100;
-                ctx.drawImage(img, 0, 0, 100, 100);
+    // 从已加载的图片提取颜色
+    _extractColorFromImage(img) {
+        try {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = 100;
+            canvas.height = 100;
+            ctx.drawImage(img, 0, 0, 100, 100);
 
-                // 从中心区域采样
-                const centerData = ctx.getImageData(25, 25, 50, 50).data;
+            // 从中心区域采样
+            const centerData = ctx.getImageData(25, 25, 50, 50).data;
 
-                let r = 0, g = 0, b = 0, count = 0;
-                for (let i = 0; i < centerData.length; i += 4) {
-                    r += centerData[i];
-                    g += centerData[i + 1];
-                    b += centerData[i + 2];
-                    count++;
-                }
-                r = Math.round(r / count);
-                g = Math.round(g / count);
-                b = Math.round(b / count);
-
-                // 增强饱和度
-                const max = Math.max(r, g, b);
-                const min = Math.min(r, g, b);
-                const delta = max - min;
-                if (delta > 20) {
-                    const factor = 1.3;
-                    r = Math.min(255, Math.round(128 + (r - 128) * factor));
-                    g = Math.min(255, Math.round(128 + (g - 128) * factor));
-                    b = Math.min(255, Math.round(128 + (b - 128) * factor));
-                }
-
-                // 设置控制栏背景色
-                document.documentElement.style.setProperty(
-                    '--controls-bg',
-                    `rgba(${r}, ${g}, ${b}, 0.25)`
-                );
-            } catch (e) {
-                console.log('Color extraction failed:', e);
+            let r = 0, g = 0, b = 0, count = 0;
+            for (let i = 0; i < centerData.length; i += 4) {
+                r += centerData[i];
+                g += centerData[i + 1];
+                b += centerData[i + 2];
+                count++;
             }
-        };
-        // 通过代理接口获取图片，绕过CORS限制
-        if (coverUrl.startsWith('https://y.gtimg.cn/')) {
-            img.src = `/api/image_proxy?url=${encodeURIComponent(coverUrl)}`;
-        } else {
-            img.src = coverUrl;
+            r = Math.round(r / count);
+            g = Math.round(g / count);
+            b = Math.round(b / count);
+
+            // 增强饱和度
+            const max = Math.max(r, g, b);
+            const min = Math.min(r, g, b);
+            const delta = max - min;
+            if (delta > 20) {
+                const factor = 1.3;
+                r = Math.min(255, Math.round(128 + (r - 128) * factor));
+                g = Math.min(255, Math.round(128 + (g - 128) * factor));
+                b = Math.min(255, Math.round(128 + (b - 128) * factor));
+            }
+
+            // 设置控制栏背景色
+            document.documentElement.style.setProperty(
+                '--controls-bg',
+                `rgba(${r}, ${g}, ${b}, 0.25)`
+            );
+        } catch (e) {
+            console.log('Color extraction failed:', e);
         }
+    }
+
+    // 获取封面URL（带缓存和请求去重）
+    async fetchCoverUrl(song, size = 800) {
+        const key = `${song.mid}_${size}`;
+        const defaultCover = `https://y.gtimg.cn/music/photo_new/T002R${size}x${size}M000003y8dsH2wBHlo_1.jpg`;
+
+        // 1. 检查缓存
+        if (this.coverCache.has(key)) {
+            return this.coverCache.get(key);
+        }
+
+        // 2. 如果有album_mid，直接构建 URL
+        if (song.album_mid) {
+            const url = `https://y.gtimg.cn/music/photo_new/T002R${size}x${size}M000${song.album_mid}.jpg`;
+            this.coverCache.set(key, url);
+            return url;
+        }
+
+        // 3. 检查是否有正在进行的请求（去重）
+        if (this.pendingCoverRequests.has(key)) {
+            return this.pendingCoverRequests.get(key);
+        }
+
+        // 4. 发起新请求
+        const request = fetch('/api/cover', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ song_data: song, size })
+        })
+            .then(r => r.json())
+            .then(data => {
+                const url = (data.cover_url && data.source !== 'default') ? data.cover_url : defaultCover;
+                this.coverCache.set(key, url);
+                this.pendingCoverRequests.delete(key);
+                return url;
+            })
+            .catch(() => {
+                this.pendingCoverRequests.delete(key);
+                return defaultCover;
+            });
+
+        this.pendingCoverRequests.set(key, request);
+        return request;
     }
 
     // 预加载封面到缓存
     preloadCover(song) {
-        const key = song.mid;
-        if (this.coverCache.has(key)) return;
-
-        const defaultCover = 'https://y.gtimg.cn/music/photo_new/T002R800x800M000003y8dsH2wBHlo_1.jpg';
-
-        if (song.album_mid) {
-            const url = `https://y.gtimg.cn/music/photo_new/T002R800x800M000${song.album_mid}.jpg`;
-            const img = new Image();
-            img.onload = () => this.coverCache.set(key, url);
-            img.src = url;
-        } else {
-            // 没有 album_mid，调用 API 获取
-            fetch('/api/cover', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ song_data: song, size: 800 })
-            })
-                .then(r => r.json())
-                .then(data => {
-                    const url = (data.cover_url && data.source !== 'default') ? data.cover_url : defaultCover;
-                    const img = new Image();
-                    img.onload = () => this.coverCache.set(key, url);
-                    img.src = url;
-                })
-                .catch(() => { });
-        }
+        // 使用fetchCoverUrl触发预加载（会自动缓存）
+        this.fetchCoverUrl(song, 800).catch(() => { });
     }
 
     notify(msg, type = 'success') {
@@ -351,21 +370,12 @@ class UI {
                 <button class="remove-btn" data-idx="${i}"><i class="fas fa-times"></i></button>
             `;
 
-            // 如果没有 album_mid，异步加载封面
+            // 如果没有 album_mid，使用fetchCoverUrl异步加载封面
             if (!song.album_mid) {
-                fetch('/api/cover', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ song_data: song, size: 300 })
-                })
-                    .then(r => r.json())
-                    .then(data => {
-                        if (data.cover_url && data.source !== 'default') {
-                            const img = div.querySelector('.item-cover');
-                            if (img) img.src = data.cover_url;
-                        }
-                    })
-                    .catch(() => { });
+                this.fetchCoverUrl(song, 300).then(url => {
+                    const img = div.querySelector('.item-cover');
+                    if (img) img.src = url;
+                });
             }
 
             // 点击播放
@@ -417,32 +427,24 @@ class UI {
             }
         };
 
-        // 优先使用缓存的封面（避免闪烁）
-        if (this.coverCache.has(song.mid)) {
-            setCover(this.coverCache.get(song.mid));
-            return;
-        }
-
-        // 如果有 album_mid，先尝试直接使用
-        if (song.album_mid) {
-            const albumCover = `https://y.gtimg.cn/music/photo_new/T002R800x800M000${song.album_mid}.jpg`;
-            setCover(albumCover);
+        // 使用fetchCoverUrl获取封面（自带缓存和去重）
+        const cacheKey = `${song.mid}_800`;
+        if (this.coverCache.has(cacheKey)) {
+            setCover(this.coverCache.get(cacheKey));
         } else {
-            // 没有 album_mid，调用智能封面 API
-            setCover(defaultCover); // 先显示默认封面
-
-            fetch('/api/cover', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ song_data: song, size: 800 })
-            })
-                .then(r => r.json())
-                .then(data => {
-                    if (data.cover_url && data.source !== 'default') {
-                        setCover(data.cover_url);
+            // 先显示默认或album_mid封面
+            if (song.album_mid) {
+                const albumCover = `https://y.gtimg.cn/music/photo_new/T002R800x800M000${song.album_mid}.jpg`;
+                setCover(albumCover);
+            } else {
+                setCover(defaultCover);
+                // 异步获取真实封面
+                this.fetchCoverUrl(song, 800).then(url => {
+                    if (url !== defaultCover) {
+                        setCover(url);
                     }
-                })
-                .catch(() => { /* 使用默认封面 */ });
+                });
+            }
         }
     }
 
@@ -587,6 +589,10 @@ class Player {
         this.currentIndex = -1;
         this.playMode = Player.MODES.SEQUENCE;
 
+        // URL缓存和预加载
+        this.urlCache = new Map();  // {mid_quality: {url, quality, timestamp}}
+        this._preloadTimer = null;  // 防抖定时器
+
         // 从存储中加载播放列表和模式
         this._loadFromStorage();
         this._initAudio();
@@ -600,6 +606,8 @@ class Player {
             if (savedQueue) {
                 this.queue = JSON.parse(savedQueue);
                 this.ui.renderPlaylist(this.queue, this.currentIndex);
+                // 页面加载时预加载队列URL
+                this._schedulePreload();
             }
 
             // 加载播放模式
@@ -620,6 +628,57 @@ class Player {
         } catch (e) {
             console.warn('保存播放列表失败:', e);
         }
+        // 队列变化时触发预加载（防抖）
+        this._schedulePreload();
+    }
+
+    // 防抖触发预加载
+    _schedulePreload() {
+        if (this._preloadTimer) {
+            clearTimeout(this._preloadTimer);
+        }
+        this._preloadTimer = setTimeout(() => {
+            this._preloadQueueUrls();
+        }, 500); // 500ms 防抖
+    }
+
+    // 预加载队列中所有歌曲的播放URL
+    async _preloadQueueUrls() {
+        const quality = document.getElementById('quality-value')?.value || 'mp3';
+        const preferFlac = (quality === 'flac');
+        const cacheKey = (mid) => `${mid}_${quality}`;
+
+        // 过滤出未缓存的歌曲
+        const uncached = this.queue.filter(song => !this.urlCache.has(cacheKey(song.mid)));
+
+        if (uncached.length === 0) return;
+        console.log(`预加载 ${uncached.length} 首歌曲URL...`);
+
+        // 并行请求（限制并发数）
+        const batchSize = 3;
+        for (let i = 0; i < uncached.length; i += batchSize) {
+            const batch = uncached.slice(i, i + batchSize);
+            await Promise.all(batch.map(async (song) => {
+                try {
+                    const res = await fetch('/api/play_url', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ song_data: song, prefer_flac: preferFlac })
+                    });
+                    const data = await res.json();
+                    if (data.url) {
+                        this.urlCache.set(cacheKey(song.mid), {
+                            url: data.url,
+                            quality: data.quality,
+                            timestamp: Date.now()
+                        });
+                    }
+                } catch (e) {
+                    // 预加载失败静默忽略
+                }
+            }));
+        }
+        console.log(`预加载完成，缓存 ${this.urlCache.size} 个URL`);
     }
 
     // 保存播放模式到 localStorage
@@ -903,10 +962,22 @@ class Player {
             .then(d => this.ui.renderLyrics(d))
             .catch(() => this.ui.renderLyrics(null));
 
-        // 获取播放链接
+        // 获取播放链接（优先使用缓存）
         const quality = document.getElementById('quality-value').value;
         const preferFlac = (quality === 'flac');
+        const cacheKey = `${song.mid}_${quality}`;
 
+        // 检查URL缓存
+        const cached = this.urlCache.get(cacheKey);
+        if (cached && (Date.now() - cached.timestamp) < 600000) { // 10分钟内有效
+            // 使用缓存的URL，立即播放
+            this.audio.src = cached.url;
+            this.audio.play();
+            this.ui.notify(`正在播放: ${song.name} (${cached.quality})`);
+            return;
+        }
+
+        // 缓存未命中，发起请求
         fetch('/api/play_url', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -915,6 +986,12 @@ class Player {
             .then(res => res.json())
             .then(data => {
                 if (data.error) throw new Error(data.error);
+                // 缓存URL
+                this.urlCache.set(cacheKey, {
+                    url: data.url,
+                    quality: data.quality,
+                    timestamp: Date.now()
+                });
                 this.audio.src = data.url;
                 this.audio.play();
                 this.ui.notify(`正在播放: ${song.name} (${data.quality})`);
@@ -1090,21 +1167,12 @@ class App {
                         </div>
                     `;
 
-                    // 如果没有 album_mid，异步加载封面
+                    // 如果没有 album_mid，使用fetchCoverUrl异步加载封面
                     if (!s.album_mid) {
-                        fetch('/api/cover', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ song_data: s, size: 300 })
-                        })
-                            .then(r => r.json())
-                            .then(coverData => {
-                                if (coverData.cover_url && coverData.source !== 'default') {
-                                    const img = div.querySelector('.item-cover');
-                                    if (img) img.src = coverData.cover_url;
-                                }
-                            })
-                            .catch(() => { });
+                        this.ui.fetchCoverUrl(s, 300).then(url => {
+                            const img = div.querySelector('.item-cover');
+                            if (img) img.src = url;
+                        });
                     }
 
                     this.ui.els.resultsList.appendChild(div);

@@ -1,7 +1,7 @@
-import aiohttp
 import logging
 from typing import Optional, Dict, Any, Literal
 from pathlib import Path
+from ..utils.http_session import get_session
 
 logger = logging.getLogger("qqmusic_web")
 
@@ -10,6 +10,7 @@ class CoverManager:
 
     def __init__(self, config):
         self.config = config
+        self._cover_cache = {}  # 缓存已验证的封面数据 {url: bytes}
 
     def get_cover_url_by_album_mid(self, mid: str, size: Literal[150, 300, 500, 800] = None) -> Optional[str]:
         """通过专辑MID获取封面URL"""
@@ -91,31 +92,78 @@ class CoverManager:
         logger.warning("未找到任何有效的封面URL")
         return None
 
+    async def get_valid_cover_with_data(self, song_data: Dict[str, Any], size: Literal[150, 300, 500, 800] = None) -> tuple[Optional[str], Optional[bytes]]:
+        """获取有效封面的URL和数据（避免重复下载）
+        
+        Returns:
+            tuple: (url, cover_data) 如果找到有效封面，否则 (None, None)
+        """
+        if size is None:
+            size = self.config["COVER_SIZE"]
+
+        # 1. 优先尝试专辑MID
+        album_mid = song_data.get('album', {}).get('mid', '')
+        if album_mid:
+            url = self.get_cover_url_by_album_mid(album_mid, size)
+            logger.debug(f"尝试专辑MID封面: {url}")
+            cover_data = await self.download_cover(url)
+            if cover_data:
+                logger.info(f"使用专辑MID封面: {url}")
+                return url, cover_data
+
+        # 2. 尝试VS值
+        vs_values = song_data.get('vs', [])
+        candidate_vs = []
+        for i, vs in enumerate(vs_values):
+            if vs and isinstance(vs, str) and len(vs) >= 3 and ',' not in vs:
+                candidate_vs.append({'value': vs, 'priority': 1})
+        for i, vs in enumerate(vs_values):
+            if vs and ',' in vs:
+                parts = [part.strip() for part in vs.split(',') if part.strip()]
+                for part in parts:
+                    if len(part) >= 3:
+                        candidate_vs.append({'value': part, 'priority': 2})
+        candidate_vs.sort(key=lambda x: x['priority'])
+
+        for candidate in candidate_vs:
+            url = self.get_cover_url_by_vs(candidate['value'], size)
+            cover_data = await self.download_cover(url)
+            if cover_data:
+                return url, cover_data
+
+        return None, None
+
     async def download_cover(self, url: str) -> Optional[bytes]:
-        """下载封面图片"""
+        """下载封面图片（带缓存）"""
         if not url:
             return None
 
+        # 检查缓存
+        if url in self._cover_cache:
+            logger.debug(f"封面命中缓存: {url}")
+            return self._cover_cache[url]
+
         try:
-            async with aiohttp.ClientSession(
-                    timeout=aiohttp.ClientTimeout(total=self.config["DOWNLOAD_TIMEOUT"])
-            ) as session:
-                async with session.get(url) as resp:
-                    if resp.status == 200:
-                        content = await resp.read()
-                        # 检查文件大小和内容有效性
-                        if len(content) > 1024:
-                            # 简单验证图片格式
-                            if content.startswith(b'\xff\xd8') or content.startswith(b'\x89PNG'):
-                                logger.debug(f"封面下载成功: {len(content)} bytes")
-                                return content
-                            else:
-                                logger.warning(f"封面图片格式无效: {url}")
+            session = await get_session(timeout=self.config["DOWNLOAD_TIMEOUT"])
+            async with session.get(url) as resp:
+                if resp.status == 200:
+                    content = await resp.read()
+                    # 检查文件大小和内容有效性
+                    if len(content) > 1024:
+                        # 简单验证图片格式
+                        if content.startswith(b'\xff\xd8') or content.startswith(b'\x89PNG'):
+                            logger.debug(f"封面下载成功: {len(content)} bytes")
+                            # 缓存封面（限制缓存大小防止内存溢出）
+                            if len(self._cover_cache) < 100:
+                                self._cover_cache[url] = content
+                            return content
                         else:
-                            logger.warning(f"封面图片过小: {len(content)} bytes, URL: {url}")
+                            logger.warning(f"封面图片格式无效: {url}")
                     else:
-                        logger.warning(f"封面下载失败: HTTP {resp.status}, URL: {url}")
-                    return None
+                        logger.warning(f"封面图片过小: {len(content)} bytes, URL: {url}")
+                else:
+                    logger.warning(f"封面下载失败: HTTP {resp.status}, URL: {url}")
+                return None
         except Exception as e:
             logger.error(f"封面下载异常: {e}, URL: {url}")
             return None

@@ -25,21 +25,19 @@ class MetadataManager:
             audio['artist'] = song_info.singers
             audio['album'] = song_info.album
 
-            # 添加封面
+            # 添加封面（使用返回数据的方法，避免重复下载）
             if song_data:
-                cover_url = await self.cover_manager.get_valid_cover_url(song_data)
-                if cover_url:
-                    cover_data = await self.cover_manager.download_cover(cover_url)
-                    if cover_data:
-                        image = Picture()
-                        image.type = 3  # 封面图片
-                        image.mime = 'image/png' if cover_url.lower().endswith('.png') else 'image/jpeg'
-                        image.desc = 'Cover'
-                        image.data = cover_data
+                cover_url, cover_data = await self.cover_manager.get_valid_cover_with_data(song_data)
+                if cover_url and cover_data:
+                    image = Picture()
+                    image.type = 3  # 封面图片
+                    image.mime = 'image/png' if cover_url.lower().endswith('.png') else 'image/jpeg'
+                    image.desc = 'Cover'
+                    image.data = cover_data
 
-                        audio.clear_pictures()
-                        audio.add_picture(image)
-                        logger.info(f"已添加封面到 {file_path.name}")
+                    audio.clear_pictures()
+                    audio.add_picture(image)
+                    logger.info(f"已添加封面到 {file_path.name}")
 
             # 添加歌词
             if lyrics_data:
@@ -75,26 +73,24 @@ class MetadataManager:
             audio.add(TPE1(encoding=3, text=song_info.singers))  # 艺术家
             audio.add(TALB(encoding=3, text=song_info.album))  # 专辑
 
-            # 添加封面
+            # 添加封面（使用返回数据的方法，避免重复下载）
             if song_data:
-                cover_url = await self.cover_manager.get_valid_cover_url(song_data)
-                if cover_url:
-                    cover_data = await self.cover_manager.download_cover(cover_url)
-                    if cover_data:
-                        mime_type = 'image/png' if cover_url.lower().endswith('.png') else 'image/jpeg'
+                cover_url, cover_data = await self.cover_manager.get_valid_cover_with_data(song_data)
+                if cover_url and cover_data:
+                    mime_type = 'image/png' if cover_url.lower().endswith('.png') else 'image/jpeg'
 
-                        # 删除现有的封面
-                        audio.delall('APIC')
+                    # 删除现有的封面
+                    audio.delall('APIC')
 
-                        # 添加新封面
-                        audio.add(APIC(
-                            encoding=3,
-                            mime=mime_type,
-                            type=3,
-                            desc='Cover',
-                            data=cover_data
-                        ))
-                        logger.info(f"已添加封面到 {file_path.name}")
+                    # 添加新封面
+                    audio.add(APIC(
+                        encoding=3,
+                        mime=mime_type,
+                        type=3,
+                        desc='Cover',
+                        data=cover_data
+                    ))
+                    logger.info(f"已添加封面到 {file_path.name}")
 
             # 添加歌词
             if lyrics_data:
