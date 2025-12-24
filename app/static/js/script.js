@@ -1006,6 +1006,7 @@ class App {
             searchInput.value = '';
             DOM.get('search-clear').style.display = 'none';
             this.ui.els.resultsList.innerHTML = '';
+            this.ui.els.pagination.style.display = 'none';
         };
 
         // Pagination
