@@ -89,6 +89,49 @@ class UI {
         this.els.lyricsScroll.addEventListener('touchstart', onUserInteract, { passive: true });
         this.els.lyricsScroll.addEventListener('touchmove', onUserInteract, { passive: true });
         this.els.lyricsScroll.addEventListener('wheel', onUserInteract, { passive: true });
+
+        // History API 监听：响应系统返回手势
+        window.addEventListener('popstate', (e) => this._updateDrawersFromState(e.state));
+    }
+
+    // 根据 history state 更新抽屉状态（由 popstate 触发）
+    _updateDrawersFromState(state) {
+        const overlay = state?.overlay;
+        if (overlay === 'search') {
+            this._showSearchDrawer();
+            this._hidePlaylistDrawer();
+        } else if (overlay === 'playlist') {
+            this._hideSearchDrawer();
+            this._showPlaylistDrawer();
+        } else {
+            this._hideSearchDrawer();
+            this._hidePlaylistDrawer();
+        }
+    }
+
+    // --- 私有 DOM 操作方法 ---
+    _showSearchDrawer() {
+        this.els.searchDrawer.classList.add('open');
+        this.els.drawerOverlay.classList.add('show');
+        document.body.style.overflow = 'hidden';
+    }
+
+    _hideSearchDrawer() {
+        this.els.searchDrawer.classList.remove('open');
+        this.els.drawerOverlay.classList.remove('show');
+        document.body.style.overflow = '';
+    }
+
+    _showPlaylistDrawer() {
+        this.els.playlistDrawer.classList.add('open');
+        this.els.drawerOverlay.classList.add('show');
+        document.body.style.overflow = 'hidden';
+    }
+
+    _hidePlaylistDrawer() {
+        this.els.playlistDrawer.classList.remove('open');
+        this.els.drawerOverlay.classList.remove('show');
+        document.body.style.overflow = '';
     }
 
     // 淡入淡出切换背景
@@ -170,17 +213,23 @@ class UI {
         }
     }
 
-    // Drawer Control
+    // Drawer Control (集成 History API)
     openDrawer() {
-        this.els.searchDrawer.classList.add('open');
-        this.els.drawerOverlay.classList.add('show');
-        document.body.style.overflow = 'hidden';
+        // 避免重复 push
+        if (history.state?.overlay !== 'search') {
+            history.pushState({ overlay: 'search' }, '', '');
+        }
+        this._showSearchDrawer();
     }
 
     closeDrawer() {
-        this.els.searchDrawer.classList.remove('open');
-        this.els.drawerOverlay.classList.remove('show');
-        document.body.style.overflow = '';
+        // 如果当前 state 是 search，通过 history.back() 关闭（触发 popstate）
+        if (history.state?.overlay === 'search') {
+            history.back();
+        } else {
+            // 直接关闭 DOM（防错处理）
+            this._hideSearchDrawer();
+        }
     }
 
     // Toggle Cover/Lyrics
@@ -189,17 +238,23 @@ class UI {
         this.els.lyricsView.classList.toggle('active');
     }
 
-    // Playlist Drawer Control
+    // Playlist Drawer Control (集成 History API)
     openPlaylistDrawer() {
-        this.els.playlistDrawer.classList.add('open');
-        this.els.drawerOverlay.classList.add('show');
-        document.body.style.overflow = 'hidden';
+        // 避免重复 push
+        if (history.state?.overlay !== 'playlist') {
+            history.pushState({ overlay: 'playlist' }, '', '');
+        }
+        this._showPlaylistDrawer();
     }
 
     closePlaylistDrawer() {
-        this.els.playlistDrawer.classList.remove('open');
-        this.els.drawerOverlay.classList.remove('show');
-        document.body.style.overflow = '';
+        // 如果当前 state 是 playlist，通过 history.back() 关闭（触发 popstate）
+        if (history.state?.overlay === 'playlist') {
+            history.back();
+        } else {
+            // 直接关闭 DOM（防错处理）
+            this._hidePlaylistDrawer();
+        }
     }
 
     // 渲染播放列表
