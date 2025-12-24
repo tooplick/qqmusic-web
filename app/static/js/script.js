@@ -1065,7 +1065,7 @@ class App {
 
     async download(index) {
         const song = this.player.playlist[index];
-        const quality = document.querySelector('input[name="quality"]:checked').value;
+        const quality = document.getElementById('quality-value').value;
         const preferFlac = (quality === 'flac');
 
         this.ui.notify(`开始下载: ${song.name}`);
