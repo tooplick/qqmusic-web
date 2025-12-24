@@ -11,7 +11,7 @@
 ## 功能特性
 
 ###  核心功能
-- **在线播放**：搜索播放歌曲(默认FLAC)
+- **在线播放**：搜索播放歌曲
 - **多音质下载**: 支持标准音质(MP3)和无损音质(FLAC)
 
 ## 安装部署
@@ -21,13 +21,13 @@
 #（Github）
 sudo -E bash -c "$(curl -fsSL https://raw.githubusercontent.com/tooplick/qqmusic_web/refs/heads/main/docker/install.sh)"
 ```
-**如果从 Github 下载脚本遇到网络问题，可以使用Gitee仓库**
+**如果从 Github 下载脚本遇到网络问题，可以使用 cloudfire 边缘代理**
 ```
 
-#（Gitee）
-sudo -E bash -c "$(curl -fsSL https://gitee.com/tooplick/qqmusic_web/raw/main/docker/giteeinstall.sh)"
+#（cloudfire）
+sudo -E bash -c "$(curl -fsSL https://vpn.ygking.top/https://raw.githubusercontent.com/tooplick/qqmusic_web/refs/heads/main/docker/install-cf.sh)"
 ```
-**Gitee仓库版本更新可能不及时，请谅解！**
+
 ### Python 3.10+
 
 1. **克隆项目**
