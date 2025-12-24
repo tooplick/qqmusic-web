@@ -826,7 +826,11 @@ class Player {
     }
 
     seek(time) {
-        if (this.audio.duration) this.audio.currentTime = time;
+        if (this.audio.duration) {
+            this.audio.currentTime = time;
+            // 如果暂停状态，自动开始播放
+            if (this.audio.paused) this.audio.play();
+        }
     }
 
     // --- 播放队列管理 ---
