@@ -554,8 +554,8 @@ body.playing .bg-layer {
     position: absolute;
     font-size: 9px;
     font-weight: 700;
-    top: -2px;
-    right: -4px;
+    top: 8px;
+    right: 10px;
 }
 
 /* 搜索抽屉 */
@@ -913,7 +913,7 @@ body.playing .bg-layer {
 
     .controls-left {
         flex: 0;
-        gap: 0;
+        gap: 8px;
     }
 
     .controls-right {
