@@ -134,9 +134,9 @@ class UI {
         document.body.style.overflow = '';
     }
 
-    // 淡入淡出切换背景
+    // 淡入淡出切换背景（同时提取颜色，共享图片加载）
     setBackground(url) {
-        // 先预加载图片，完成后再切换
+        // 先预加载图片，完成后再切换背景
         const img = new Image();
         img.onload = () => {
             // 获取当前和下一层
@@ -152,8 +152,68 @@ class UI {
 
             // 更新活跃层
             this.activeBgLayer = this.activeBgLayer === 1 ? 2 : 1;
+
+            // 同步提取颜色：使用代理接口加载图片后提取
+            this._extractAndApplyColor(url);
         };
         img.src = url;
+    }
+
+    // 提取封面主色调并应用到控制栏
+    _extractAndApplyColor(coverUrl) {
+        const img = new Image();
+        img.crossOrigin = 'Anonymous';
+        img.onerror = () => {
+            // CORS 失败时静默忽略
+        };
+        img.onload = () => {
+            try {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                canvas.width = 100;
+                canvas.height = 100;
+                ctx.drawImage(img, 0, 0, 100, 100);
+
+                // 从中心区域采样
+                const centerData = ctx.getImageData(25, 25, 50, 50).data;
+
+                let r = 0, g = 0, b = 0, count = 0;
+                for (let i = 0; i < centerData.length; i += 4) {
+                    r += centerData[i];
+                    g += centerData[i + 1];
+                    b += centerData[i + 2];
+                    count++;
+                }
+                r = Math.round(r / count);
+                g = Math.round(g / count);
+                b = Math.round(b / count);
+
+                // 增强饱和度
+                const max = Math.max(r, g, b);
+                const min = Math.min(r, g, b);
+                const delta = max - min;
+                if (delta > 20) {
+                    const factor = 1.3;
+                    r = Math.min(255, Math.round(128 + (r - 128) * factor));
+                    g = Math.min(255, Math.round(128 + (g - 128) * factor));
+                    b = Math.min(255, Math.round(128 + (b - 128) * factor));
+                }
+
+                // 设置控制栏背景色
+                document.documentElement.style.setProperty(
+                    '--controls-bg',
+                    `rgba(${r}, ${g}, ${b}, 0.25)`
+                );
+            } catch (e) {
+                console.log('Color extraction failed:', e);
+            }
+        };
+        // 通过代理接口获取图片，绕过CORS限制
+        if (coverUrl.startsWith('https://y.gtimg.cn/')) {
+            img.src = `/api/image_proxy?url=${encodeURIComponent(coverUrl)}`;
+        } else {
+            img.src = coverUrl;
+        }
     }
 
     // 预加载封面到缓存
@@ -339,8 +399,7 @@ class UI {
         // 设置封面的辅助函数
         const setCover = (url) => {
             this.els.albumCover.src = url;
-            this.setBackground(url); // 使用淡入淡出切换背景
-            this._extractCoverColor(url);
+            this.setBackground(url); // 背景切换同时会提取颜色
             // 同时更新缓存
             this.coverCache.set(song.mid, url);
 
@@ -387,62 +446,6 @@ class UI {
         }
     }
 
-    _extractCoverColor(coverUrl) {
-        // 使用代理接口解决CORS限制，允许Canvas读取像素数据
-        const img = new Image();
-        img.crossOrigin = 'Anonymous';
-        img.onerror = () => {
-            // CORS 失败时静默忽略，使用默认控制栏颜色
-        };
-        img.onload = () => {
-            try {
-                const canvas = document.createElement('canvas');
-                const ctx = canvas.getContext('2d');
-                canvas.width = 100;
-                canvas.height = 100;
-                ctx.drawImage(img, 0, 0, 100, 100);
-
-                // 从中心区域采样，获取更具代表性的颜色
-                const centerData = ctx.getImageData(25, 25, 50, 50).data;
-
-                let r = 0, g = 0, b = 0, count = 0;
-                for (let i = 0; i < centerData.length; i += 4) {
-                    r += centerData[i];
-                    g += centerData[i + 1];
-                    b += centerData[i + 2];
-                    count++;
-                }
-                r = Math.round(r / count);
-                g = Math.round(g / count);
-                b = Math.round(b / count);
-
-                // 增强饱和度使颜色更鲜明
-                const max = Math.max(r, g, b);
-                const min = Math.min(r, g, b);
-                const delta = max - min;
-                if (delta > 20) { // 有一定饱和度时才增强
-                    const factor = 1.3;
-                    r = Math.min(255, Math.round(128 + (r - 128) * factor));
-                    g = Math.min(255, Math.round(128 + (g - 128) * factor));
-                    b = Math.min(255, Math.round(128 + (b - 128) * factor));
-                }
-
-                // 设置控制栏背景色（增加透明度使颜色更柔和）
-                document.documentElement.style.setProperty(
-                    '--controls-bg',
-                    `rgba(${r}, ${g}, ${b}, 0.25)`
-                );
-            } catch (e) {
-                console.log('Color extraction failed:', e);
-            }
-        };
-        // 通过代理接口获取图片，绕过CORS限制
-        if (coverUrl.startsWith('https://y.gtimg.cn/')) {
-            img.src = `/api/image_proxy?url=${encodeURIComponent(coverUrl)}`;
-        } else {
-            img.src = coverUrl;
-        }
-    }
 
     updateProgress(curr, total) {
         if (!total) return;
