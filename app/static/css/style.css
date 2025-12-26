@@ -94,6 +94,8 @@ body.playing .bg-layer {
     justify-content: space-between;
     align-items: center;
     padding: 16px 24px;
+    /* 适配 iOS 状态栏安全区域 (PWA 透明状态栏模式) */
+    padding-top: calc(16px + env(safe-area-inset-top, 0px));
     flex-shrink: 0;
     background: rgba(255, 255, 255, 0.1);
     border-bottom: 1px solid var(--divider);
