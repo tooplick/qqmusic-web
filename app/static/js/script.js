@@ -1228,29 +1228,70 @@ class App {
 
         this.ui.notify(`开始下载: ${song.name}`);
 
-        try {
-            const res = await fetch('/api/download', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    song_data: song,
-                    prefer_flac: preferFlac,
-                    add_metadata: true
-                })
-            });
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.error);
+        // 检测是否在 Android 应用中
+        if (typeof AndroidBridge !== 'undefined' && AndroidBridge.downloadMusic) {
+            try {
+                // 获取播放 URL（与播放时使用相同的接口）
+                const urlRes = await fetch('/api/play_url', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ song_data: song, prefer_flac: preferFlac })
+                });
+                const urlData = await urlRes.json();
+                if (!urlRes.ok) throw new Error(urlData.error);
 
-            const a = document.createElement('a');
-            a.href = `/api/file/${encodeURIComponent(data.filename)}`;
-            a.download = data.filename;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
+                // 获取封面 URL
+                let coverUrl = null;
+                if (song.album_mid) {
+                    coverUrl = `https://y.gtimg.cn/music/photo_new/T002R800x800M000${song.album_mid}.jpg`;
+                } else {
+                    try {
+                        coverUrl = await this.ui.fetchCoverUrl(song, 800);
+                    } catch (e) {
+                        // 封面获取失败，忽略
+                    }
+                }
 
-            this.ui.notify('已触发下载', 'success');
-        } catch (e) {
-            this.ui.notify(e.message, 'error');
+                // 调用 Android 原生下载
+                AndroidBridge.downloadMusic(JSON.stringify({
+                    url: urlData.url,
+                    title: song.name,
+                    artist: song.singers,
+                    album: song.album || '',
+                    coverUrl: coverUrl,
+                    quality: urlData.quality
+                }));
+
+                // Android 端会显示 Toast，这里不用显示额外通知
+            } catch (e) {
+                this.ui.notify(e.message, 'error');
+            }
+        } else {
+            // 浏览器端：使用服务器下载
+            try {
+                const res = await fetch('/api/download', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        song_data: song,
+                        prefer_flac: preferFlac,
+                        add_metadata: true
+                    })
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error);
+
+                const a = document.createElement('a');
+                a.href = `/api/file/${encodeURIComponent(data.filename)}`;
+                a.download = data.filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+
+                this.ui.notify('已触发下载', 'success');
+            } catch (e) {
+                this.ui.notify(e.message, 'error');
+            }
         }
     }
 }

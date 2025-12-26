@@ -94,7 +94,7 @@ body.playing .bg-layer {
     justify-content: space-between;
     align-items: center;
     padding: 16px 24px;
-    /* 支持 iPhone 等带刘海/状态栏的设备，顶部增加安全区填充 */
+    /* 支持沉浸式状态栏的设备，顶部增加安全区填充 */
     padding-top: calc(16px + env(safe-area-inset-top, 0px));
     flex-shrink: 0;
     background: rgba(255, 255, 255, 0.1);
@@ -589,6 +589,8 @@ body.playing .bg-layer {
     display: flex;
     align-items: center;
     padding: 16px 20px;
+    /* 支持沉浸式状态栏的设备，顶部增加安全区填充 */
+    padding-top: calc(16px + env(safe-area-inset-top, 0px));
     border-bottom: 1px solid var(--divider);
     gap: 16px;
 }
@@ -780,7 +782,7 @@ body.playing .bg-layer {
 /* 通知 */
 .notification-container {
     position: fixed;
-    top: 14px;
+    top: 80px;
     left: 50%;
     transform: translateX(-50%);
     z-index: 1000;
