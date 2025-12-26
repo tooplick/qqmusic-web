@@ -210,6 +210,18 @@ class UI {
                 '--controls-bg',
                 `rgba(${r}, ${g}, ${b}, 0.25)`
             );
+
+            // 更新 theme-color meta 标签（控制手机状态栏颜色）
+            const themeColorMeta = document.getElementById('theme-color-meta');
+            if (themeColorMeta) {
+                // 使用与控制栏类似的颜色，但需要是不透明的
+                // 将提取的颜色与白色混合，模拟透明效果
+                const mixWithWhite = (c) => Math.round(c * 0.25 + 255 * 0.75);
+                const themeR = mixWithWhite(r);
+                const themeG = mixWithWhite(g);
+                const themeB = mixWithWhite(b);
+                themeColorMeta.setAttribute('content', `rgb(${themeR}, ${themeG}, ${themeB})`);
+            }
         } catch (e) {
             console.log('Color extraction failed:', e);
         }
