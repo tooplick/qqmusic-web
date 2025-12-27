@@ -1412,12 +1412,4 @@ class App {
     }
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-    new App();
-    // 隐藏加载动画
-    const loader = document.getElementById('page-loader');
-    if (loader) {
-        loader.classList.add('hide');
-        setTimeout(() => loader.remove(), 300);
-    }
-});
+document.addEventListener('DOMContentLoaded', () => new App());

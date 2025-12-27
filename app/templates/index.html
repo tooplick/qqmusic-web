@@ -13,46 +13,10 @@
             margin: 0;
             background: #f2f2f7;
         }
-
-        /* Google 样式加载动画 */
-        .page-loader {
-            position: fixed;
-            inset: 0;
-            background: #f2f2f7;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 9999;
-            transition: opacity 0.3s ease-out;
-        }
-
-        .page-loader.hide {
-            opacity: 0;
-            pointer-events: none;
-        }
-
-        .spinner {
-            width: 40px;
-            height: 40px;
-            border: 3px solid #e0e0e0;
-            border-top-color: #424242;
-            border-radius: 50%;
-            animation: spin 0.8s linear infinite;
-        }
-
-        @keyframes spin {
-            to {
-                transform: rotate(360deg);
-            }
-        }
     </style>
 </head>
 
 <body>
-    <!-- 加载动画：放在最前面，确保先渲染 -->
-    <div class="page-loader" id="page-loader">
-        <div class="spinner"></div>
-    </div>
 
     <!-- CSS 放在 body 内异步加载 -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
