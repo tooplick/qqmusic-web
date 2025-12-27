@@ -594,6 +594,10 @@ class Player {
         this.lyricsCache = new Map();  // {mid: lyricsData}
         this._preloadTimer = null;  // 防抖定时器
 
+        // 快速切歌优化
+        this._playDebounceTimer = null;  // 播放防抖定时器
+        this._currentAbortController = null;  // 用于取消进行中的请求
+
         // 从存储中加载播放列表和模式
         this._loadFromStorage();
         this._initAudio();
@@ -971,21 +975,31 @@ class Player {
         this.ui.notify('播放列表已清空');
     }
 
-    // 从队列播放指定索引
+    // 从队列播放指定索引（带防抖和取消优化）
     playFromQueue(index) {
         if (index < 0 || index >= this.queue.length) return;
+
+        // 取消之前的防抖定时器
+        if (this._playDebounceTimer) {
+            clearTimeout(this._playDebounceTimer);
+        }
+
+        // 取消之前的网络请求
+        if (this._currentAbortController) {
+            this._currentAbortController.abort();
+        }
+
         this.currentIndex = index;
         const song = this.queue[index];
 
-        // 立即停止当前播放
+        // 立即停止当前播放和更新 UI（这部分不需要防抖）
         this.audio.pause();
         this.audio.currentTime = 0;
         this._stopTimer();
-
         this.ui.updateSongInfo(song);
         this.ui.renderPlaylist(this.queue, this.currentIndex);
 
-        // 获取歌词（优先使用缓存）
+        // 获取歌词（优先使用缓存，不需要防抖）
         if (this.lyricsCache.has(song.mid)) {
             this.ui.renderLyrics(this.lyricsCache.get(song.mid));
         } else {
@@ -993,12 +1007,26 @@ class Player {
                 .then(r => r.json())
                 .then(d => {
                     this.lyricsCache.set(song.mid, d);
-                    this.ui.renderLyrics(d);
+                    // 只有当前歌曲仍然是这首时才更新歌词
+                    if (this.queue[this.currentIndex]?.mid === song.mid) {
+                        this.ui.renderLyrics(d);
+                    }
                 })
-                .catch(() => this.ui.renderLyrics(null));
+                .catch(() => {
+                    if (this.queue[this.currentIndex]?.mid === song.mid) {
+                        this.ui.renderLyrics(null);
+                    }
+                });
         }
 
-        // 获取播放链接（优先使用缓存）
+        // 防抖：延迟 200ms 再开始加载音频
+        this._playDebounceTimer = setTimeout(() => {
+            this._loadAndPlaySong(song);
+        }, 200);
+    }
+
+    // 实际加载并播放歌曲（内部方法）
+    _loadAndPlaySong(song) {
         const quality = document.getElementById('quality-value').value;
         const preferFlac = (quality === 'flac');
         const cacheKey = `${song.mid}_${quality}`;
@@ -1006,22 +1034,30 @@ class Player {
         // 检查URL缓存
         const cached = this.urlCache.get(cacheKey);
         if (cached && (Date.now() - cached.timestamp) < 600000) { // 10分钟内有效
-            // 使用缓存的URL，立即播放
+            // 确认当前歌曲仍然是这首
+            if (this.queue[this.currentIndex]?.mid !== song.mid) return;
             this.audio.src = cached.url;
             this.audio.play();
             this.ui.notify(`正在播放: ${song.name} (${cached.quality})`);
             return;
         }
 
+        // 创建新的 AbortController
+        this._currentAbortController = new AbortController();
+        const signal = this._currentAbortController.signal;
+
         // 缓存未命中，发起请求
         fetch('/api/play_url', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ song_data: song, prefer_flac: preferFlac })
+            body: JSON.stringify({ song_data: song, prefer_flac: preferFlac }),
+            signal: signal
         })
             .then(res => res.json())
             .then(data => {
                 if (data.error) throw new Error(data.error);
+                // 确认当前歌曲仍然是这首
+                if (this.queue[this.currentIndex]?.mid !== song.mid) return;
                 // 缓存URL
                 this.urlCache.set(cacheKey, {
                     url: data.url,
@@ -1033,7 +1069,11 @@ class Player {
                 this.ui.notify(`正在播放: ${song.name} (${data.quality})`);
             })
             .catch(e => {
-                this.ui.notify(`播放失败: ${e.message}`, 'error');
+                // 忽略 AbortError（用户切歌导致的取消）
+                if (e.name === 'AbortError') return;
+                if (this.queue[this.currentIndex]?.mid === song.mid) {
+                    this.ui.notify(`播放失败: ${e.message}`, 'error');
+                }
             });
     }
 
