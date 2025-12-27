@@ -75,6 +75,8 @@ class UI {
         this.coverCache = new Map(); // 封面URL缓存 {mid: url}
         this.pendingCoverRequests = new Map(); // 正在进行的请求 {mid: Promise}
         this.activeBgLayer = 1; // 当前活跃的背景层 (1 或 2)
+        this._bgDebounceTimer = null; // 背景切换防抖定时器
+        this._pendingBgUrl = null; // 待切换的背景URL
 
         // 监听用户手动滚动歌词
         // 监听用户手动滚动歌词 (Touch & Wheel)
@@ -136,6 +138,22 @@ class UI {
     }
     // 淡入淡出切换背景（同时提取颜色，共享图片加载）
     setBackground(url) {
+        // 防抖：取消之前的定时器
+        if (this._bgDebounceTimer) {
+            clearTimeout(this._bgDebounceTimer);
+        }
+
+        // 记录待切换的URL
+        this._pendingBgUrl = url;
+
+        // 延迟 200ms 再实际切换背景
+        this._bgDebounceTimer = setTimeout(() => {
+            this._doSetBackground(this._pendingBgUrl);
+        }, 200);
+    }
+
+    // 实际执行背景切换（内部方法）
+    _doSetBackground(url) {
         // 获取当前和下一层
         const currentEl = this.activeBgLayer === 1 ? this.els.bgLayer1 : this.els.bgLayer2;
         const nextEl = this.activeBgLayer === 1 ? this.els.bgLayer2 : this.els.bgLayer1;
@@ -148,6 +166,9 @@ class UI {
         const img = new Image();
         img.crossOrigin = 'Anonymous';
         img.onload = () => {
+            // 确认URL仍然是最新的（防止旧请求覆盖新请求）
+            if (this._pendingBgUrl !== url) return;
+
             // 设置新背景到下一层
             nextEl.style.backgroundImage = `url('${url}')`;
 
@@ -162,6 +183,7 @@ class UI {
             this._extractColorFromImage(img);
         };
         img.onerror = () => {
+            if (this._pendingBgUrl !== url) return;
             // 代理失败时直接使用原始URL设置背景
             nextEl.style.backgroundImage = `url('${url}')`;
             currentEl.classList.add('fade-out');
