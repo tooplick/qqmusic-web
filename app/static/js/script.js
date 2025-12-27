@@ -881,8 +881,16 @@ class Player {
     }
 
     toggle() {
-        if (this.audio.paused && this.audio.src) this.audio.play();
-        else if (!this.audio.paused) this.audio.pause();
+        if (this.audio.paused) {
+            if (this.audio.src) {
+                this.audio.play();
+            } else if (this.currentIndex >= 0 && this.queue[this.currentIndex]) {
+                // 音频未加载，触发从队列播放当前歌曲
+                this.playFromQueue(this.currentIndex);
+            }
+        } else {
+            this.audio.pause();
+        }
     }
 
     // 独立的播放/暂停方法 (供 Android 通知栏调用)
@@ -965,6 +973,10 @@ class Player {
             this.audio.currentTime = time;
             // 如果暂停状态，自动开始播放
             if (this.audio.paused) this.audio.play();
+        } else if (this.currentIndex >= 0 && this.queue[this.currentIndex]) {
+            // 音频未加载，先加载再跳转到指定时间
+            this._pendingSeekTime = time;
+            this.playFromQueue(this.currentIndex);
         }
     }
 
@@ -1074,12 +1086,33 @@ class Player {
         const preferFlac = (quality === 'flac');
         const cacheKey = `${song.mid}_${quality}`;
 
+        // 处理待跳转时间的辅助函数
+        const applyPendingSeek = () => {
+            if (this._pendingSeekTime !== undefined) {
+                // 等待音频加载足够数据后跳转
+                const seekHandler = () => {
+                    if (this.audio.duration && this._pendingSeekTime !== undefined) {
+                        this.audio.currentTime = this._pendingSeekTime;
+                        this._pendingSeekTime = undefined;
+                    }
+                    this.audio.removeEventListener('loadedmetadata', seekHandler);
+                };
+                if (this.audio.duration) {
+                    this.audio.currentTime = this._pendingSeekTime;
+                    this._pendingSeekTime = undefined;
+                } else {
+                    this.audio.addEventListener('loadedmetadata', seekHandler);
+                }
+            }
+        };
+
         // 检查URL缓存
         const cached = this.urlCache.get(cacheKey);
         if (cached && (Date.now() - cached.timestamp) < 600000) { // 10分钟内有效
             // 确认当前歌曲仍然是这首
             if (this.queue[this.currentIndex]?.mid !== song.mid) return;
             this.audio.src = cached.url;
+            applyPendingSeek();
             this.audio.play();
             this.ui.notify(`正在播放: ${song.name} (${cached.quality})`);
             return;
@@ -1108,6 +1141,7 @@ class Player {
                     timestamp: Date.now()
                 });
                 this.audio.src = data.url;
+                applyPendingSeek();
                 this.audio.play();
                 this.ui.notify(`正在播放: ${song.name} (${data.quality})`);
             })
