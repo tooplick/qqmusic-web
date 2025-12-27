@@ -838,6 +838,15 @@ class Player {
         else if (!this.audio.paused) this.audio.pause();
     }
 
+    // 独立的播放/暂停方法 (供 Android 通知栏调用)
+    play() {
+        if (this.audio.src && this.audio.paused) this.audio.play();
+    }
+
+    pause() {
+        if (!this.audio.paused) this.audio.pause();
+    }
+
     prev() {
         if (!this.queue.length) return;
         const idx = (this.currentIndex - 1 + this.queue.length) % this.queue.length;
@@ -1043,85 +1052,22 @@ class App {
     }
 
     _bindEvents() {
-        // Controls - Helper to bind both click and touchstart for better response
-        const bindBtn = (id, action) => {
-            const btn = DOM.get(id);
-            if (!btn) return;
+        // Controls
+        DOM.get('play-btn').onclick = () => this.player.toggle();
+        DOM.get('prev-btn').onclick = () => this.player.prev();
+        DOM.get('next-btn').onclick = () => this.player.next();
 
-            // 使用 click 兼容性最好，但在移动端可能有延迟
-            // 如果需要消除延迟，可以使用 touchstart 并 preventDefault，但要注意避免触发 click
-            // 这里简单起见，使用 click，因为 fastclick 库通常不再需要
-            // 如果用户点击无效，可能是点击区域问题或事件冲突
-            // 我们确保按钮点击时阻止冒泡，避免触发底层元素的点击事件
-            btn.onclick = (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                action();
-            };
-
-            // 添加 touchstart 反馈 (active state 通常由 CSS :active 处理)
-        };
-
-        bindBtn('play-btn', () => this.player.toggle());
-        bindBtn('prev-btn', () => this.player.prev());
-        bindBtn('next-btn', () => this.player.next());
-
-        // Progress Bar Interaction (Drag support)
-        const progressBar = DOM.get('progress-bar');
-
-        const handleProgressInput = (clientX, rect) => {
-            let pct = (clientX - rect.left) / rect.width;
-            if (pct < 0) pct = 0;
-            if (pct > 1) pct = 1;
-
+        // Progress
+        DOM.get('progress-bar').onclick = (e) => {
+            const rect = e.currentTarget.getBoundingClientRect();
+            const pct = (e.clientX - rect.left) / rect.width;
             if (this.player.audio.duration) {
                 this.player.audio.currentTime = this.player.audio.duration * pct;
             }
         };
 
-        // Click
-        progressBar.onclick = (e) => {
-            e.stopPropagation();
-            const rect = e.currentTarget.getBoundingClientRect();
-            handleProgressInput(e.clientX, rect);
-        };
-
-        // Touch Drag
-        progressBar.addEventListener('touchstart', (e) => {
-            e.stopPropagation(); // 防止触发底层元素
-            // 这里不 preventDefault，允许用户开始触摸
-            // 但如果是在拖动，需要 preventDefault 滚动
-        }, { passive: true });
-
-        progressBar.addEventListener('touchmove', (e) => {
-            e.stopPropagation();
-            if (e.cancelable) e.preventDefault(); // 阻止滚动
-
-            if (e.touches.length > 0) {
-                const touch = e.touches[0];
-                const rect = progressBar.getBoundingClientRect();
-                handleProgressInput(touch.clientX, rect);
-            }
-        }, { passive: false }); // 必须非 passive 才能 preventDefault
-
-        // Mouse Drag (Desktop)
-        let isDragging = false;
-        progressBar.addEventListener('mousedown', (e) => {
-            isDragging = true;
-        });
-        document.addEventListener('mousemove', (e) => {
-            if (isDragging) {
-                e.preventDefault();
-                const rect = progressBar.getBoundingClientRect();
-                handleProgressInput(e.clientX, rect);
-            }
-        });
-        document.addEventListener('mouseup', () => {
-            isDragging = false;
-        });
-
         // Playback Mode
-        bindBtn('mode-btn', () => this.player.toggleMode());
+        DOM.get('mode-btn').onclick = () => this.player.toggleMode();
 
         // Quality Toggle (使用 addEventListener 确保移动端兼容)
         const qualityToggle = DOM.get('quality-toggle');
@@ -1132,36 +1078,26 @@ class App {
             const label = DOM.get('quality-label');
             if (valueInput.value === 'flac') {
                 valueInput.value = 'mp3';
-                // label.textContent = 'MP3'; // UI会自动通过notify更新
+                label.textContent = 'MP3';
             } else {
                 valueInput.value = 'flac';
-                // label.textContent = 'FLAC';
-            }
-            // 触发重新播放逻辑或者只是切换偏好？
-            // 原始逻辑只是切换值，下一次播放生效。
-            // 这里仅仅切换UI显示
-            if (valueInput.value === 'flac') {
                 label.textContent = 'FLAC';
-            } else {
-                label.textContent = 'MP3';
             }
         };
         qualityToggle.addEventListener('click', toggleQuality);
 
         // Cover/Lyrics Toggle
-        // 绑定到 document 或 main-view 也可以，但 currentTargets 更好
-        // 注意：bottom-controls 的事件 propagation 已经被上面阻止了，所以不会触发这个
         this.ui.els.coverView.onclick = () => this.ui.toggleView();
         this.ui.els.lyricsView.onclick = () => this.ui.toggleView();
 
         // Drawer
-        bindBtn('search-btn', () => this.ui.openDrawer());
-        bindBtn('close-drawer', () => this.ui.closeDrawer());
+        DOM.get('search-btn').onclick = () => this.ui.openDrawer();
+        DOM.get('close-drawer').onclick = () => this.ui.closeDrawer();
 
         // Playlist Drawer
-        bindBtn('playlist-btn', () => this.ui.openPlaylistDrawer());
-        bindBtn('close-playlist', () => this.ui.closePlaylistDrawer());
-        bindBtn('clear-playlist', () => this.player.clearQueue());
+        DOM.get('playlist-btn').onclick = () => this.ui.openPlaylistDrawer();
+        DOM.get('close-playlist').onclick = () => this.ui.closePlaylistDrawer();
+        DOM.get('clear-playlist').onclick = () => this.player.clearQueue();
 
         // Overlay closes any open drawer
         this.ui.els.drawerOverlay.onclick = () => {
