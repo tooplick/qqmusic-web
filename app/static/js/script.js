@@ -613,6 +613,27 @@ class Player {
                 this.ui.renderPlaylist(this.queue, this.currentIndex);
                 // 页面加载时预加载队列URL
                 this._schedulePreload();
+
+                // 如果有歌曲，显示第一首的信息（但不播放）
+                if (this.queue.length > 0) {
+                    this.currentIndex = 0;
+                    const firstSong = this.queue[0];
+                    this.ui.updateSongInfo(firstSong);
+                    this.ui.renderPlaylist(this.queue, this.currentIndex);
+
+                    // 加载第一首歌的歌词
+                    if (this.lyricsCache.has(firstSong.mid)) {
+                        this.ui.renderLyrics(this.lyricsCache.get(firstSong.mid));
+                    } else {
+                        fetch(`/api/lyric/${firstSong.mid}`)
+                            .then(r => r.json())
+                            .then(d => {
+                                this.lyricsCache.set(firstSong.mid, d);
+                                this.ui.renderLyrics(d);
+                            })
+                            .catch(() => this.ui.renderLyrics(null));
+                    }
+                }
             }
 
             // 加载播放模式
