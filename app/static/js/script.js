@@ -421,53 +421,71 @@ class UI {
     }
 
     updateSongInfo(song) {
-        this.els.title.textContent = song.name;
-        this.els.artist.textContent = song.singers;
-        if (this.els.titleMini) this.els.titleMini.textContent = song.name;
-        if (this.els.artistMini) this.els.artistMini.textContent = song.singers;
+        // 1. 开始淡出动画
+        const textEls = [this.els.title, this.els.artist, this.els.titleMini, this.els.artistMini, this.els.albumCover];
+        textEls.forEach(el => el && el.classList.add('fade-out'));
 
-        const defaultCover = 'https://y.gtimg.cn/music/photo_new/T002R800x800M000003y8dsH2wBHlo_1.jpg';
+        // 2. 延迟更新内容（等待淡出完成 300ms）
+        setTimeout(() => {
+            // 更新文本
+            this.els.title.textContent = song.name;
+            this.els.artist.textContent = song.singers;
+            if (this.els.titleMini) this.els.titleMini.textContent = song.name;
+            if (this.els.artistMini) this.els.artistMini.textContent = song.singers;
 
-        // 设置封面的辅助函数
-        const setCover = (url) => {
-            this.els.albumCover.src = url;
-            this.setBackground(url); // 背景切换同时会提取颜色
-            // 同时更新缓存
-            this.coverCache.set(song.mid, url);
+            // 文本元素淡入
+            [this.els.title, this.els.artist, this.els.titleMini, this.els.artistMini].forEach(el => el && el.classList.remove('fade-out'));
 
-            // 更新 Media Session 元数据（浏览器/系统级显示）
-            if ('mediaSession' in navigator) {
-                navigator.mediaSession.metadata = new MediaMetadata({
-                    title: song.name,
-                    artist: song.singers,
-                    album: song.album || '',
-                    artwork: [
-                        { src: url.replace('R800x800', 'R300x300'), sizes: '300x300', type: 'image/jpeg' },
-                        { src: url, sizes: '800x800', type: 'image/jpeg' }
-                    ]
-                });
-            }
-        };
+            const defaultCover = 'https://y.gtimg.cn/music/photo_new/T002R800x800M000003y8dsH2wBHlo_1.jpg';
 
-        // 使用fetchCoverUrl获取封面（自带缓存和去重）
-        const cacheKey = `${song.mid}_800`;
-        if (this.coverCache.has(cacheKey)) {
-            setCover(this.coverCache.get(cacheKey));
-        } else {
-            // 先显示默认或album_mid封面
-            if (song.album_mid) {
-                const albumCover = `https://y.gtimg.cn/music/photo_new/T002R800x800M000${song.album_mid}.jpg`;
-                setCover(albumCover);
+            // 设置封面的辅助函数
+            const setCover = (url) => {
+                const img = this.els.albumCover;
+                img.src = url;
+
+                // 图片加载完成后淡入
+                img.onload = () => img.classList.remove('fade-out');
+                // 兜底：防止 onload 不触发（极少情况）
+                setTimeout(() => img.classList.remove('fade-out'), 100);
+
+                this.setBackground(url); // 背景切换同时会提取颜色
+                // 同时更新缓存
+                this.coverCache.set(song.mid, url);
+
+                // 更新 Media Session 元数据（浏览器/系统级显示）
+                if ('mediaSession' in navigator) {
+                    navigator.mediaSession.metadata = new MediaMetadata({
+                        title: song.name,
+                        artist: song.singers,
+                        album: song.album || '',
+                        artwork: [
+                            { src: url.replace('R800x800', 'R300x300'), sizes: '300x300', type: 'image/jpeg' },
+                            { src: url, sizes: '800x800', type: 'image/jpeg' }
+                        ]
+                    });
+                }
+            };
+
+            // 使用fetchCoverUrl获取封面（自带缓存和去重）
+            const cacheKey = `${song.mid}_800`;
+            if (this.coverCache.has(cacheKey)) {
+                setCover(this.coverCache.get(cacheKey));
             } else {
-                setCover(defaultCover);
-                // 异步获取真实封面
-                this.fetchCoverUrl(song, 800).then(url => {
-                    if (url !== defaultCover) {
-                        setCover(url);
-                    }
-                });
+                // 先显示默认或album_mid封面
+                if (song.album_mid) {
+                    const albumCover = `https://y.gtimg.cn/music/photo_new/T002R800x800M000${song.album_mid}.jpg`;
+                    setCover(albumCover);
+                } else {
+                    setCover(defaultCover);
+                    // 异步获取真实封面
+                    this.fetchCoverUrl(song, 800).then(url => {
+                        if (url !== defaultCover) {
+                            setCover(url);
+                        }
+                    });
+                }
             }
-        }
+        }, 300);
     }
 
 
@@ -479,6 +497,14 @@ class UI {
     }
 
     renderLyrics(lyricsData) {
+        this.els.lyricsScroll.classList.add('fade-out');
+        setTimeout(() => {
+            this._doRenderLyrics(lyricsData);
+            this.els.lyricsScroll.classList.remove('fade-out');
+        }, 300);
+    }
+
+    _doRenderLyrics(lyricsData) {
         this.currentLyrics = [];
         this.els.lyricsScroll.innerHTML = '';
 
@@ -621,6 +647,13 @@ class Player {
         this._currentAbortController = null;  // 用于取消进行中的请求
 
         // 从存储中加载播放列表和模式
+        // 移至 init() 方法中延迟执行
+        // this._loadFromStorage();
+        // this._initAudio();
+    }
+
+    // 初始化方法
+    init() {
         this._loadFromStorage();
         this._initAudio();
     }
@@ -1197,6 +1230,11 @@ class App {
         window.player = this.player;
 
         this._bindEvents();
+
+        // 延迟初始化播放器，避免阻塞首屏渲染
+        setTimeout(() => {
+            this.player.init();
+        }, 100);
     }
 
     _bindEvents() {
@@ -1412,4 +1450,10 @@ class App {
     }
 }
 
-document.addEventListener('DOMContentLoaded', () => new App());
+// 移除立即调用 new App()，改为显式延迟初始化
+document.addEventListener('DOMContentLoaded', () => {
+    // 使用 requestAnimationFrame 确保在首次绘制前初始化 UI
+    requestAnimationFrame(() => {
+        new App();
+    });
+});
