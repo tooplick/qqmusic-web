@@ -839,7 +839,7 @@ class Player {
     }
 
     // 独立的播放/暂停方法 (供 Android 通知栏调用)
-    play() {
+    resume() {
         if (this.audio.src && this.audio.paused) this.audio.play();
     }
 
