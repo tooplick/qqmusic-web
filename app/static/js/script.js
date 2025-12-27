@@ -643,6 +643,30 @@ class Player {
                     this.ui.updateSongInfo(firstSong);
                     this.ui.renderPlaylist(this.queue, this.currentIndex);
 
+                    // 立即预加载第一首歌的URL（无需防抖，优先保证首次播放体验）
+                    const quality = document.getElementById('quality-value')?.value || 'flac';
+                    const preferFlac = (quality === 'flac');
+                    const cacheKey = `${firstSong.mid}_${quality}`;
+                    if (!this.urlCache.has(cacheKey)) {
+                        fetch('/api/play_url', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ song_data: firstSong, prefer_flac: preferFlac })
+                        })
+                            .then(res => res.json())
+                            .then(data => {
+                                if (data.url) {
+                                    this.urlCache.set(cacheKey, {
+                                        url: data.url,
+                                        quality: data.quality,
+                                        timestamp: Date.now()
+                                    });
+                                    console.log('第一首歌URL已预加载');
+                                }
+                            })
+                            .catch(() => { });
+                    }
+
                     // 加载第一首歌的歌词
                     if (this.lyricsCache.has(firstSong.mid)) {
                         this.ui.renderLyrics(this.lyricsCache.get(firstSong.mid));
@@ -1074,10 +1098,17 @@ class Player {
                 });
         }
 
-        // 防抖：延迟 200ms 再开始加载音频
-        this._playDebounceTimer = setTimeout(() => {
+        // 首次播放（音频未加载时）立即开始，切歌时使用防抖
+        const isFirstPlay = !this.audio.src;
+        if (isFirstPlay) {
+            // 首次播放，立即加载
             this._loadAndPlaySong(song);
-        }, 200);
+        } else {
+            // 切歌时，防抖 200ms 再加载
+            this._playDebounceTimer = setTimeout(() => {
+                this._loadAndPlaySong(song);
+            }, 200);
+        }
     }
 
     // 实际加载并播放歌曲（内部方法）
@@ -1381,4 +1412,12 @@ class App {
     }
 }
 
-document.addEventListener('DOMContentLoaded', () => new App());
+document.addEventListener('DOMContentLoaded', () => {
+    new App();
+    // 隐藏加载动画
+    const loader = document.getElementById('page-loader');
+    if (loader) {
+        loader.classList.add('hide');
+        setTimeout(() => loader.remove(), 300);
+    }
+});
