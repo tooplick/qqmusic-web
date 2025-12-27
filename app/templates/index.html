@@ -212,6 +212,14 @@
     <div class="notification-container" id="notification-container"></div>
 
     <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+    <!-- 注册 Service Worker 实现资源缓存 -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/static/sw.js')
+                .then(() => console.log('Service Worker 已注册'))
+                .catch(e => console.warn('Service Worker 注册失败:', e));
+        }
+    </script>
 </body>
 
 </html>
