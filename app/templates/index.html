@@ -7,9 +7,10 @@
         content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>QQMusic Web</title>
     <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/favicon.png') }}">
-    <!-- 首屏样式：避免黑屏 + 加载动画 -->
+    <!-- 首屏关键样式：内联确保立即生效 -->
     <style>
         body {
+            margin: 0;
             background: #f2f2f7;
         }
 
@@ -45,20 +46,21 @@
             }
         }
     </style>
+</head>
+
+<body>
+    <!-- 加载动画：放在最前面，确保先渲染 -->
+    <div class="page-loader" id="page-loader">
+        <div class="spinner"></div>
+    </div>
+
+    <!-- CSS 放在 body 内异步加载 -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-    <!-- Font Awesome 异步加载，不阻塞渲染 -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
         media="print" onload="this.media='all'">
     <noscript>
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     </noscript>
-</head>
-
-<body>
-    <!-- 加载动画 -->
-    <div class="page-loader" id="page-loader">
-        <div class="spinner"></div>
-    </div>
     <!-- 动态背景层（双层实现淡入淡出） -->
     <div class="bg-container">
         <div class="bg-layer" id="bg-layer-1"></div>
