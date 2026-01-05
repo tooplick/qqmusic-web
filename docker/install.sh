@@ -15,7 +15,11 @@ fi
 # 创建项目目录
 PROJECT_DIR="/opt/qqmusic-web"
 echo "创建项目目录: $PROJECT_DIR"
-mkdir -p $PROJECT_DIR
+if [ -d "$PROJECT_DIR" ]; then
+    echo "项目目录已存在，继续安装..."
+else
+    mkdir -p $PROJECT_DIR
+fi
 cd $PROJECT_DIR
 
 # 创建配置目录
