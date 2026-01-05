@@ -26,7 +26,8 @@
     "has_next": true,
     "total_pages": 6,
     "total_results": 60
-  }
+  },
+  "all_results": 60
 }
 ```
 
@@ -34,10 +35,7 @@
 - **POST** `/api/play_url`
 ```json
 // 请求
-{
-  "song_data": { "mid": "...", "name": "...", "vip": false },
-  "prefer_flac": true
-}
+{ "song_data": { "mid": "歌曲MID" }, "prefer_flac": true }
 
 // 响应
 { "url": "https://...", "quality": "FLAC", "song_mid": "..." }
@@ -46,9 +44,9 @@
 ### 下载歌曲
 - **POST** `/api/download`
 ```json
-// 请求
+// 请求（raw_data 用于添加歌曲元数据）
 {
-  "song_data": { "mid": "...", "name": "...", "raw_data": {} },
+  "song_data": { "mid": "...", "name": "...", "raw_data": {...} },
   "prefer_flac": true,
   "add_metadata": true
 }
@@ -136,13 +134,24 @@
 ### 刷新凭证
 - **POST** `/admin/api/credential/refresh`
 ```json
-{ "success": true, "message": "凭证刷新成功" }
+{
+  "success": true,
+  "message": "凭证刷新成功",
+  "expired": false,
+  "credential_loaded": true
+}
 ```
 
 ### 获取凭证信息
 - **GET** `/admin/api/credential/info`
 ```json
-{ "musicid": "...", "musickey": "...", "expired": "False", ... }
+{
+  "musicid": "...",
+  "musickey": "...",
+  "expired": "False",
+  "can_refresh": "True",
+  ...
+}
 ```
 
 ### 清空音乐文件夹

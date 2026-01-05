@@ -668,51 +668,6 @@ class Player {
                 this.ui.renderPlaylist(this.queue, this.currentIndex);
                 // 页面加载时预加载队列URL
                 this._schedulePreload();
-
-                // 如果有歌曲，显示第一首的信息（但不播放）
-                if (this.queue.length > 0) {
-                    this.currentIndex = 0;
-                    const firstSong = this.queue[0];
-                    this.ui.updateSongInfo(firstSong);
-                    this.ui.renderPlaylist(this.queue, this.currentIndex);
-
-                    // 立即预加载第一首歌的URL（无需防抖，优先保证首次播放体验）
-                    const quality = document.getElementById('quality-value')?.value || 'flac';
-                    const preferFlac = (quality === 'flac');
-                    const cacheKey = `${firstSong.mid}_${quality}`;
-                    if (!this.urlCache.has(cacheKey)) {
-                        fetch('/api/play_url', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ song_data: firstSong, prefer_flac: preferFlac })
-                        })
-                            .then(res => res.json())
-                            .then(data => {
-                                if (data.url) {
-                                    this.urlCache.set(cacheKey, {
-                                        url: data.url,
-                                        quality: data.quality,
-                                        timestamp: Date.now()
-                                    });
-                                    console.log('第一首歌URL已预加载');
-                                }
-                            })
-                            .catch(() => { });
-                    }
-
-                    // 加载第一首歌的歌词
-                    if (this.lyricsCache.has(firstSong.mid)) {
-                        this.ui.renderLyrics(this.lyricsCache.get(firstSong.mid));
-                    } else {
-                        fetch(`/api/lyric/${firstSong.mid}`)
-                            .then(r => r.json())
-                            .then(d => {
-                                this.lyricsCache.set(firstSong.mid, d);
-                                this.ui.renderLyrics(d);
-                            })
-                            .catch(() => this.ui.renderLyrics(null));
-                    }
-                }
             }
 
             // 加载播放模式
