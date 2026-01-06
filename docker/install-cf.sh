@@ -12,8 +12,8 @@ if [ "$EUID" -ne 0 ]; then
 fi
 
 
-# 创建项目目录
-PROJECT_DIR="/opt/qqmusic-web"
+# 创建项目目录 (在当前目录下)
+PROJECT_DIR="$(pwd)/qqmusic-web"
 echo "创建项目目录: $PROJECT_DIR"
 mkdir -p $PROJECT_DIR
 cd $PROJECT_DIR
