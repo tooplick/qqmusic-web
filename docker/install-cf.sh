@@ -18,17 +18,8 @@ echo "创建项目目录: $PROJECT_DIR"
 mkdir -p $PROJECT_DIR
 cd $PROJECT_DIR
 
-# 创建配置目录 (在项目目录下)
+# 定义配置目录路径 (在项目目录下)
 DATA_DIR="$PROJECT_DIR/qqmusic_web_data"
-echo "创建配置目录: $DATA_DIR"
-mkdir -p $DATA_DIR/credential
-mkdir -p $DATA_DIR/music
-
-# 设置目录权限
-chmod 755 $DATA_DIR/credential
-chmod 755 $DATA_DIR/music
-
-echo "配置目录已创建: $DATA_DIR"
 
 # 下载项目文件
 echo "下载项目文件..."
@@ -99,6 +90,17 @@ else
     
     echo "项目文件下载完成"
 fi
+
+# 创建配置目录 (在项目下载之后)
+echo "创建配置目录: $DATA_DIR"
+mkdir -p $DATA_DIR/credential
+mkdir -p $DATA_DIR/music
+
+# 设置目录权限
+chmod 755 $DATA_DIR/credential
+chmod 755 $DATA_DIR/music
+
+echo "配置目录已创建: $DATA_DIR"
 
 # 迁移凭证
 echo "检查并迁移凭证文件..."
