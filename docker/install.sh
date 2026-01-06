@@ -22,16 +22,17 @@ else
 fi
 cd $PROJECT_DIR
 
-# 创建配置目录
-echo "创建配置目录..."
-mkdir -p /root/qqmusic_web/credential
-mkdir -p /root/qqmusic_web/music
+# 创建配置目录 (在项目目录下)
+DATA_DIR="$PROJECT_DIR/qqmusic_web_data"
+echo "创建配置目录: $DATA_DIR"
+mkdir -p $DATA_DIR/credential
+mkdir -p $DATA_DIR/music
 
 # 设置目录权限
-chmod 755 /root/qqmusic_web/credential
-chmod 755 /root/qqmusic_web/music
+chmod 755 $DATA_DIR/credential
+chmod 755 $DATA_DIR/music
 
-echo "配置目录已创建: /root/qqmusic_web/"
+echo "配置目录已创建: $DATA_DIR"
 
 # 下载项目文件
 echo "下载项目文件..."
@@ -112,10 +113,10 @@ fi
 
 # 迁移凭证
 echo "检查并迁移凭证文件..."
-if [ ! -f "/root/qqmusic_web/credential/qqmusic_cred.pkl" ]; then
+if [ ! -f "$DATA_DIR/credential/qqmusic_cred.pkl" ]; then
     echo "正在从Git迁移凭证文件..."
-    cp $PROJECT_DIR/credential/qqmusic_cred.pkl /root/qqmusic_web/credential/qqmusic_cred.pkl
-    echo "凭证文件已迁移到 /root/qqmusic_web/credential/qqmusic_cred.pkl"
+    cp $PROJECT_DIR/credential/qqmusic_cred.pkl $DATA_DIR/credential/qqmusic_cred.pkl
+    echo "凭证文件已迁移到 $DATA_DIR/credential/qqmusic_cred.pkl"
 else
     echo "本地已有凭证文件，跳过迁移"
 fi
@@ -248,7 +249,7 @@ if docker-compose ps | grep -q "Up"; then
     
     echo ""
     echo "项目目录: $PROJECT_DIR"
-    echo "配置目录: /root/qqmusic_web/"
+    echo "配置目录: $DATA_DIR"
     echo ""
     
     echo "管理命令:"

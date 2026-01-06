@@ -50,9 +50,9 @@ sudo -E bash -c "$(curl -fsSL https://vpn.ygking.top/https://raw.githubuserconte
    - 打开浏览器访问 `http://localhost:6022`
    - 凭证管理界面 `http://localhost:6022/admin`
 
-5.  **配置文件夹**
-      - `/root/qqmusic_web/credential` #凭证文件夹
-      - `/root/qqmusic_web/music` #下载音乐本地目录  
+5.  **配置文件夹** (Docker部署时位于项目目录下)
+      - `qqmusic_web_data/credential` #凭证文件夹
+      - `qqmusic_web_data/music` #下载音乐本地目录  
 
 
 6. **Tip**:  

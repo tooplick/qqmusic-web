@@ -8,8 +8,8 @@ services:
     ports:
       - "6022:6022"
     volumes:
-      - /root/qqmusic_web/credential:/app/credential 
-      - /root/qqmusic_web/music:/app/music # 挂载配置文件夹
+      - ../qqmusic_web_data/credential:/app/credential 
+      - ../qqmusic_web_data/music:/app/music # 挂载配置文件夹
       - ..:/app  
     environment:
       - FLASK_ENV=development
