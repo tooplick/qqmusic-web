@@ -74,9 +74,7 @@ class UI {
         this.scrollTimeout = null;
         this.coverCache = new Map(); // 封面URL缓存 {mid: url}
         this.pendingCoverRequests = new Map(); // 正在进行的请求 {mid: Promise}
-        this.activeBgLayer = 1; // 当前活跃的背景层 (1 或 2)
-        this._bgDebounceTimer = null; // 背景切换防抖定时器
-        this._pendingBgUrl = null; // 待切换的背景URL
+
 
         // 监听用户手动滚动歌词
         // 监听用户手动滚动歌词 (Touch & Wheel)
@@ -136,106 +134,7 @@ class UI {
         this.els.drawerOverlay.classList.remove('show');
         document.body.style.overflow = '';
     }
-    // 淡入淡出切换背景（同时提取颜色，共享图片加载）
-    setBackground(url) {
-        // 防抖：取消之前的定时器
-        if (this._bgDebounceTimer) {
-            clearTimeout(this._bgDebounceTimer);
-        }
 
-        // 记录待切换的URL
-        this._pendingBgUrl = url;
-
-        // 延迟 200ms 再实际切换背景
-        this._bgDebounceTimer = setTimeout(() => {
-            this._doSetBackground(this._pendingBgUrl);
-        }, 200);
-    }
-
-    // 实际执行背景切换（内部方法）
-    _doSetBackground(url) {
-        // 获取当前和下一层
-        const currentEl = this.activeBgLayer === 1 ? this.els.bgLayer1 : this.els.bgLayer2;
-        const nextEl = this.activeBgLayer === 1 ? this.els.bgLayer2 : this.els.bgLayer1;
-
-        // 判断是否需要代理（QQ音乐CDN）
-        const needsProxy = url.startsWith('https://y.gtimg.cn/');
-        const proxyUrl = needsProxy ? `/api/image_proxy?url=${encodeURIComponent(url)}` : url;
-
-        // 加载图片（通过代理，可同时用于背景和颜色提取）
-        const img = new Image();
-        img.crossOrigin = 'Anonymous';
-        img.onload = () => {
-            // 确认URL仍然是最新的（防止旧请求覆盖新请求）
-            if (this._pendingBgUrl !== url) return;
-
-            // 设置新背景到下一层
-            nextEl.style.backgroundImage = `url('${url}')`;
-
-            // 切换显示
-            currentEl.classList.add('fade-out');
-            nextEl.classList.remove('fade-out');
-
-            // 更新活跃层
-            this.activeBgLayer = this.activeBgLayer === 1 ? 2 : 1;
-
-            // 直接使用已加载的图片提取颜色（无需再次加载）
-            this._extractColorFromImage(img);
-        };
-        img.onerror = () => {
-            if (this._pendingBgUrl !== url) return;
-            // 代理失败时直接使用原始URL设置背景
-            nextEl.style.backgroundImage = `url('${url}')`;
-            currentEl.classList.add('fade-out');
-            nextEl.classList.remove('fade-out');
-            this.activeBgLayer = this.activeBgLayer === 1 ? 2 : 1;
-        };
-        img.src = proxyUrl;
-    }
-
-    // 从已加载的图片提取颜色
-    _extractColorFromImage(img) {
-        try {
-            const canvas = document.createElement('canvas');
-            const ctx = canvas.getContext('2d');
-            canvas.width = 100;
-            canvas.height = 100;
-            ctx.drawImage(img, 0, 0, 100, 100);
-
-            // 从中心区域采样
-            const centerData = ctx.getImageData(25, 25, 50, 50).data;
-
-            let r = 0, g = 0, b = 0, count = 0;
-            for (let i = 0; i < centerData.length; i += 4) {
-                r += centerData[i];
-                g += centerData[i + 1];
-                b += centerData[i + 2];
-                count++;
-            }
-            r = Math.round(r / count);
-            g = Math.round(g / count);
-            b = Math.round(b / count);
-
-            // 增强饱和度
-            const max = Math.max(r, g, b);
-            const min = Math.min(r, g, b);
-            const delta = max - min;
-            if (delta > 20) {
-                const factor = 1.3;
-                r = Math.min(255, Math.round(128 + (r - 128) * factor));
-                g = Math.min(255, Math.round(128 + (g - 128) * factor));
-                b = Math.min(255, Math.round(128 + (b - 128) * factor));
-            }
-
-            // 设置控制栏背景色
-            document.documentElement.style.setProperty(
-                '--controls-bg',
-                `rgba(${r}, ${g}, ${b}, 0.25)`
-            );
-        } catch (e) {
-            console.log('Color extraction failed:', e);
-        }
-    }
 
     // 获取封面URL（带缓存和请求去重）
     async fetchCoverUrl(song, size = 800) {
@@ -448,7 +347,7 @@ class UI {
                 // 兜底：防止 onload 不触发（极少情况）
                 setTimeout(() => img.classList.remove('fade-out'), 100);
 
-                this.setBackground(url); // 背景切换同时会提取颜色
+
                 // 同时更新缓存
                 this.coverCache.set(song.mid, url);
 
