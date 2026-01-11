@@ -2,12 +2,6 @@
 
 一个基于Flask和QQ音乐API的在线音乐下载工具，支持搜索、播放、下载和音质选择功能。
 
-<div align="center">
-  <a href="https://qq.ygking.top">
-    <img src="images/home.png" width="80%" alt="home">
-  </a>
-</div>
-
 ## 功能特性
 
 ###  核心功能
@@ -58,7 +52,6 @@ sudo -E bash -c "$(curl -fsSL https://vpn.ygking.top/https://raw.githubuserconte
 6. **Tip**:  
       - 如果报错请  `pip install qqmusic-api-python flask aiohttp mutagen`
 
-### 示例网站：[qq.ygking.top](https://qq.ygking.top/)
 
 ## API接口
 详情见：[**API doc.md**](./API%20doc.md)
