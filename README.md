@@ -26,8 +26,8 @@ sudo -E bash -c "$(curl -fsSL https://vpn.ygking.top/https://raw.githubuserconte
 
 1. **克隆项目**
    ```bash
-   git clone https://github.com/tooplick/qqmusic_web
-   cd qqmusic_web
+   git clone https://github.com/tooplick/qqmusic-web
+   cd qqmusic-web
    ```
 
 2. **安装依赖**
