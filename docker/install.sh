@@ -33,7 +33,7 @@ if command -v git &> /dev/null; then
         echo "项目已存在,更新到最新版本..."
         # 检查当前远程仓库地址
         CURRENT_REMOTE=$(git remote get-url origin 2>/dev/null || echo "")
-        GITEE_REMOTE="https://github.com/tooplick/qqmusic_web.git"
+        GITEE_REMOTE="https://github.com/tooplick/qqmusic-web.git"
         
         if [ "$CURRENT_REMOTE" != "$GITEE_REMOTE" ]; then
             echo "修正远程仓库地址为 GitHub..."
@@ -43,7 +43,7 @@ if command -v git &> /dev/null; then
         git reset --hard origin/main
         git clean -fd
     else
-        git clone https://github.com/tooplick/qqmusic_web.git .
+        git clone https://github.com/tooplick/qqmusic-web.git .
     fi
     echo "项目文件下载完成"
 else
@@ -70,7 +70,7 @@ else
     
     # 下载项目zip文件
     echo "wget项目文件..."
-    wget -O qqmusic_web.zip https://github.com/tooplick/qqmusic_web/archive/main.zip
+    wget -O qqmusic_web.zip https://github.com/tooplick/qqmusic-web/archive/main.zip
     
     # 检查unzip命令是否存在
     if ! command -v unzip &> /dev/null; then
@@ -91,12 +91,27 @@ else
     
     # 移动文件到当前目录
     echo "移动文件到项目目录..."
-    mv qqmusic_web-main/* ./
-    mv qqmusic_web-main/.* ./ 2>/dev/null || true
+    # 尝试匹配解压后的目录 (qqmusic-web-main 或 qqmusic_web-main)
+    if [ -d "qqmusic-web-main" ]; then
+        mv qqmusic-web-main/* ./
+        mv qqmusic-web-main/.* ./ 2>/dev/null || true
+        rm -rf qqmusic-web-main
+    elif [ -d "qqmusic_web-main" ]; then
+        mv qqmusic_web-main/* ./
+        mv qqmusic_web-main/.* ./ 2>/dev/null || true
+        rm -rf qqmusic_web-main
+    else
+        echo "警告: 未找到预期的解压目录，尝试模糊匹配..."
+        TEMP_DIR=$(find . -maxdepth 1 -type d -name "qqmusic*" | head -n 1)
+        if [ -n "$TEMP_DIR" ]; then
+            mv "$TEMP_DIR"/* ./
+            mv "$TEMP_DIR"/.* ./ 2>/dev/null || true
+            rm -rf "$TEMP_DIR"
+        fi
+    fi
     
     # 清理临时文件
     echo "清理临时文件..."
-    rm -rf qqmusic_web-main
     rm -f qqmusic_web.zip
     
     echo "项目文件下载完成"
@@ -124,20 +139,8 @@ else
 fi
 
 # 检测是否在中国地区
-echo "检测网络环境..."
-# 检查IP地理位置
-IP_INFO=$(curl -s --max-time 5 "http://ip-api.com/json/" || echo "")
-if echo "$IP_INFO" | grep -q "\"country\":\"China\""; then
-    IS_CHINA=true
-else
-    # 检查特定中国网站的可访问性
-    if curl -s --connect-timeout 5 "https://www.baidu.com" > /dev/null && \
-       ! curl -s --connect-timeout 5 "https://www.google.com" > /dev/null 2>&1; then
-        IS_CHINA=true
-    else
-        IS_CHINA=false
-    fi
-fi
+# 强制使用国内镜像源，解决官方源拉取失败的问题
+IS_CHINA=true
 
 if [ "$IS_CHINA" = true ]; then
     echo "检测到中国大陆网络环境，修改 Dockerfile 使用国内镜像源"
